@@ -24,4 +24,4 @@ jobs:
       - name: Get the prerelease earthly script
         run: earthly --artifact github.com/earthly/earthly:main+prerelease-script/earthly ./earthly
       - name: Run tests
-        run: ./earthly +test
+        run: ./earthly --ci -P +test
