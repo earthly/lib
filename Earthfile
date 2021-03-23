@@ -1,7 +1,7 @@
 
 INSTALL_DIND:
     COMMAND
-    ARG script_target=github.com/earthly/lib+install-dind-script
+    ARG script_target=github.com/earthly/lib:main+install-dind-script
     COPY "${script_target}/install-dind.sh" /tmp/install-dind.sh
     RUN /tmp/install-dind.sh
 
