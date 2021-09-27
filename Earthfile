@@ -1,8 +1,7 @@
 
 INSTALL_DIND:
     COMMAND
-    ARG script_target=github.com/earthly/lib:main+install-dind-script
-    COPY "${script_target}/install-dind.sh" /tmp/install-dind.sh
+    COPY +install-dind-script/install-dind.sh /tmp/install-dind.sh
     RUN /tmp/install-dind.sh
 
 install-dind-script:
@@ -11,10 +10,10 @@ install-dind-script:
     SAVE ARTIFACT ./install-dind.sh
 
 test:
-    BUILD +test-install-dind
+    BUILD +test-install-dind-amd64
 
-test-install-dind:
-    BUILD +test-install-dind-for-image \
+test-install-dind-amd64:
+    BUILD --platform=linux/amd64 +test-install-dind-for-image \
         --base_image=docker:dind \
         --base_image=alpine:latest \
         --base_image=debian:stable \
@@ -25,10 +24,18 @@ test-install-dind:
         --base_image=earthly/dind:alpine \
         --base_image=earthly/dind:ubuntu
 
+test-install-dind-arm64:
+    BUILD --platform=linux/arm64 +test-install-dind-for-image \
+        --base_image=docker:dind \
+        --base_image=alpine:latest \
+        --base_image=ubuntu:latest \
+        --base_image=earthly/dind:alpine \
+        --base_image=earthly/dind:ubuntu
+
 test-install-dind-for-image:
     ARG base_image
     FROM "$base_image"
-    DO +INSTALL_DIND --script_target=./
+    DO +INSTALL_DIND
     RUN echo "
 version: \"3\"
 services:
