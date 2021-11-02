@@ -1,0 +1,18 @@
+# Example 1: referencing using the full github path
+#
+# mytarget:
+#     FROM ubuntu:latest
+#     DO github.com/earthly/lib/apt+APT --pkg=git
+#
+# Example 2: using an import
+#
+# IMPORT github.com/earthly/lib
+# mytarget:
+#     FROM ubuntu:latest
+#     DO apt+APT --pkg=git
+#
+
+APT:
+    COMMAND
+    ARG pkg
+    RUN --mount type=cache,target=/var/cache/apt export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y $pkg
