@@ -6,7 +6,7 @@ INSTALL_DIND:
     RUN /tmp/install-dind.sh
 
 install-dind-script:
-    FROM alpine:3.13
+    FROM alpine:latest
     COPY ./install-dind.sh ./
     SAVE ARTIFACT ./install-dind.sh
 
@@ -37,6 +37,7 @@ test-install-dind-for-image:
     ARG base_image
     FROM "$base_image"
     DO +INSTALL_DIND
+    WORKDIR /app
     RUN echo "
 version: \"3\"
 services:
