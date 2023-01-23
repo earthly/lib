@@ -6,7 +6,7 @@ INSTALL_DIND:
     RUN /tmp/install-dind.sh
 
 install-dind-script:
-    FROM alpine:3.13
+    FROM alpine:3.17
     COPY ./install-dind.sh ./
     SAVE ARTIFACT ./install-dind.sh
 
@@ -36,6 +36,13 @@ test-install-dind-arm64:
 test-install-dind-for-image:
     ARG base_image
     FROM "$base_image"
+
+    # docker-compose will fail with:
+    #     Error response from daemon: Invalid container name (-hello-1), only [a-zA-Z0-9][a-zA-Z0-9_.-] are allowed
+    # if docker-compose.yml is in the root directory, due to the --project flag defaulting to "".
+    # This bug does not exist in the official earthly/dind:alpine image.
+    WORKDIR /dind-test
+
     DO +INSTALL_DIND
     RUN echo "
 version: \"3\"
