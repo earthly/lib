@@ -1,11 +1,5 @@
 VERSION 0.6
 
-REQUIRE:
-    COMMAND
-    ARG argName
-    ARG argValue
-    RUN if [ -z "$argValue" ]; then echo "Argument '$argName' is required"; exit 1; fi
-
 INSTALL_DIND:
     COMMAND
     COPY +install-dind-script/install-dind.sh /tmp/install-dind.sh
