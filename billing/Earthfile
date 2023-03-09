@@ -4,6 +4,13 @@ FROM alpine/git:2.36.3
 
 # Estimates monthly active users of a GIT remote repo, based on past commits
 active-users:
-  RUN --secret repoUrl git clone --bare --filter=blob:none $repoUrl repo;
-  RUN cd repo; \
-      git --no-pager log -s --format="%ae" --since=30.days | grep -v @users.noreply.github.com | sort | uniq -c | awk '$1 >= 3 {print $0}' | wc -l
+
+  RUN mkdir ~/.ssh; \
+      ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts; \
+      ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
+  RUN --no-cache --ssh --secret repoUrl git clone --bare --filter=blob:none $repoUrl repo;
+  RUN --no-cache cd repo; \
+      activeUsers=$(git --no-pager log -s --format="%ae" --since=30.days | grep -v @users.noreply.github.com | sort | uniq -c | awk '$1 >= 3 {print $0}' | wc -l); \
+      echo ""; \
+      echo "========== ACTIVE USERS: $activeUsers =========="; \
+      echo "";
