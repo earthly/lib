@@ -8,7 +8,11 @@ earthly --secret repoUrl=<repoUrl> github.com/earthly/lib/billing+active-users
 ```
 
 ### Private repositories
-For private repositories use `https` URLs, and pass credentials within the URL:
+#### SSH
+For SSH URLs, SSH auth is passed-though from the host machine.
+
+#### HTTPS
+For HTTPS URLs, pass credentials within the URL:
 ```
 earthly --secret repoUrl=https://<user>@<password>/host/repo.git github.com/earthly/lib/billing+active-users 
 ```
