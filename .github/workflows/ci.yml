@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 14 * * 2'
 
 jobs:
   test:
@@ -29,3 +31,8 @@ jobs:
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Run tests
         run: earthly --ci -P +test
+      - name: post to slack on failure
+        run: |-
+          echo "posting failure message to slack"
+          curl -s -X POST -H 'Content-type: application/json' --data '{ "attachments": [ { "fallback": "earthly/lib weekly test has failed", "title": "earthly/lib", "title_link": "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID", "text": "weekly test failed", "color": "#CC0000" } ] }' "${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}"
+            #TODO add this back in once its confirmed to be working        if: github.event.schedule != '' && ${{ failure() }}
