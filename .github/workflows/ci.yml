@@ -35,3 +35,4 @@ jobs:
         run: |-
           echo "posting failure message to slack"
           curl -s -X POST -H 'Content-type: application/json' --data '{ "attachments": [ { "fallback": "earthly/lib weekly test has failed", "title": "earthly/lib", "title_link": "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID", "text": "weekly test failed", "color": "#CC0000" } ] }' "${{ secrets.SLACK_RELEASE_WEBHOOK_URL }}"
+        if: ${{ failure() }}
