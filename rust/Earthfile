@@ -1,0 +1,32 @@
+VERSION --arg-scope-and-set 0.7
+
+# CARGO caches the cargo command "cargo $cargo_args"
+# Arguments:
+#   - source_libs (required): name of the cargo packages under development
+#   - cargo_args (required): Cargo subcommand and its arguments
+#   - target_subfolder: Folder within ./target/ that build in going to generate, if any.
+#   - save_artifact: folder to be saved as a build artifact, if any
+#   - as_local: local path to save the build artifact, if any
+CARGO:
+    COMMAND
+    ARG --required cargo_args
+    ARG --required source_libs
+    ARG target_subfolder
+    ARG save_artifact=./target/$target_subfolder
+    ARG as_local=""
+    LET cargo_home=$(echo $CARGO_HOME)
+    LET output_name=$(echo "$cargo_args" | head -n1 | cut -d " " -f1)
+    IF test $target_subfolder
+        CACHE ./target/$target_subfolder/
+        FOR source_lib IN $source_libs
+           RUN rm -rf ./target/$target_subfolder/.fingerprint/$source_lib-*
+        END
+    END
+    RUN --mount=type=cache,target=$cargo_home/registry cargo $cargo_args
+    IF test $save_artifact
+        IF [ "$as_local" != "" ]
+            SAVE ARTIFACT $save_artifact $output_name AS LOCAL $as_local
+        ELSE
+            SAVE ARTIFACT $save_artifact $output_name
+        END
+    END
