@@ -1,4 +1,4 @@
-VERSION --arg-scope-and-set 0.7
+VERSION 0.7
 
 # CARGO caches the cargo command "cargo $cargo_args"
 # Arguments:
@@ -14,8 +14,8 @@ CARGO:
     ARG target_subfolder
     ARG save_artifact=./target/$target_subfolder
     ARG as_local=""
-    LET cargo_home=$(echo $CARGO_HOME)
-    LET output_name=$(echo "$cargo_args" | head -n1 | cut -d " " -f1)
+    ARG cargo_home=$(echo $CARGO_HOME)
+    ARG output_name=$(echo "$cargo_args" | head -n1 | cut -d " " -f1)
     IF test $target_subfolder
         CACHE ./target/$target_subfolder/
         FOR source_lib IN $source_libs
