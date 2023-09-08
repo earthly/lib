@@ -18,8 +18,10 @@ CARGO:
     ARG output_name=$(echo "$cargo_args" | head -n1 | cut -d " " -f1)
     IF test $target_subfolder
         CACHE ./target/$target_subfolder/
-        FOR source_lib IN $source_libs
-           RUN cd ./target/$target_subfolder/.fingerprint; find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \;
+        IF [ -d ./target/$target_subfolder/.fingerprint ]
+           FOR source_lib IN $source_libs
+              RUN cd ./target/$target_subfolder/.fingerprint; find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \;
+           END
         END
     END
     RUN --mount=type=cache,target=$cargo_home/registry cargo $cargo_args
