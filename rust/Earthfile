@@ -6,8 +6,16 @@ VERSION 0.7
 CARGO:
     COMMAND
     ARG --required args
-    ARG cargo_home=$(echo $CARGO_HOME)
-    ARG output_name=$(echo "$cargo_args" | head -n1 | cut -d " " -f1)
+    CACHE ./target/
+    DO +REMOVE_SOURCE_FINGERPRINTS
+    RUN --mount=type=cache,sharing=shared,target=$CARGO_HOME/registry \
+        --mount=type=cache,sharing=shared,target=$CARGO_HOME/git \
+        cargo $args
+
+# REMOVE_SOURCE_FINGERPRINTS remove the Cargo fingerprint folders of the source packages.
+# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
+REMOVE_SOURCE_FINGERPRINTS:
+    COMMAND
     COPY +get-stoml/stoml /tmp/stoml
     ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
     CACHE ./target/
@@ -18,9 +26,6 @@ CARGO:
             find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
           done \
         done
-    RUN --mount=type=cache,sharing=shared,target=$cargo_home/registry \
-        --mount=type=cache,sharing=shared,target=$cargo_home/git \
-        cargo $args
 
 get-stoml:
     FROM alpine:3.18.3
