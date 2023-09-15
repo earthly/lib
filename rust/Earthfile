@@ -12,12 +12,13 @@ CARGO:
     ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
     CACHE ./target/
     ARG fingerprint_folders = $(find target -name .fingerprint)
-    FOR fingerprint_folder IN $fingerprint_folders
-        FOR source_lib IN $source_libs
-            RUN cd $fingerprint_folder; find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \;
-        END
-    END
-    RUN --mount=type=cache,target=$cargo_home/registry --mount=type=cache,target=$cargo_home/git cargo $args
+    RUN for fingerprint_folder in $fingerprint_folders; do \
+          cd $fingerprint_folder; \
+          for source_lib in $source_libs; do \
+            find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
+          done \
+        done
+    RUN --mount=type=cache,sharing=shared,target=$cargo_home/registry --mount=type=cache,target=$cargo_home/git cargo $args
 
 get-stoml:
     FROM alpine:3.18.3
