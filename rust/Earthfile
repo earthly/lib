@@ -18,7 +18,9 @@ CARGO:
             find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
           done \
         done
-    RUN --mount=type=cache,sharing=shared,target=$cargo_home/registry --mount=type=cache,target=$cargo_home/git cargo $args
+    RUN --mount=type=cache,sharing=shared,target=$cargo_home/registry \
+        --mount=type=cache,sharing=shared,target=$cargo_home/git \
+        cargo $args
 
 get-stoml:
     FROM alpine:3.18.3
