@@ -1,12 +1,12 @@
-VERSION 0.7
+VERSION --pass-args --arg-scope-and-set 0.7
 
-# COPY_KNOWN_HOSTS will append some known public keys into the $target_file
-COPY_KNOWN_HOSTS:
+# ADD_KNOWN_HOSTS will append some known public keys into the $target_file
+ADD_KNOWN_HOSTS:
     COMMAND
     ARG target_file=~/.ssh/known_hosts
-    ARG target_dir=$(eval echo $(dirname $target_file))
+    LET expanded_target_file="$(eval echo $target_file)"
     COPY +known-hosts/known_hosts /tmp/.
-    RUN mkdir -p $target_dir && cat /tmp/known_hosts >> $(eval echo $target_file)
+    RUN mkdir -p $(dirname $expanded_target_file) && cat /tmp/known_hosts >> $expanded_target_file
     RUN rm /tmp/known_hosts
 
 # known-hosts is used to copy the known_hosts file into the build context (internal use)
@@ -14,3 +14,44 @@ known-hosts:
     FROM alpine
     COPY known_hosts .
     SAVE ARTIFACT known_hosts
+
+#######################
+# Tests:
+#######################
+
+test-add-known-hosts:
+    BUILD --platform=linux/amd64 --platform=linux/arm64 +test-add-known-hosts-image \
+        --base_image=alpine:latest \
+        --base_image=debian:stable \
+        --base_image=debian:stable-slim \
+        --base_image=ubuntu:latest \
+        --base_image=amazonlinux:1 \
+        --base_image=amazonlinux:2 \
+        --target_file=~/to_interpolate/known_hosts \
+        --target_file=no_dir_new_known_hosts \
+        --target_file=/some/dir/to/file/new_known_hosts \
+        --target_file=existing_known_hosts # this will be handled in the test target
+
+test-add-known-hosts-image:
+    ARG --required base_image
+    ARG TARGETPLATFORM
+    FROM alpine
+    IF [ "$base_image" = "amazonlinux:1" ] && [ "$TARGETPLATFORM" = "linux/arm64" ] # no amazonlinux:1 for arm64, skipping
+        RUN echo skipping $base_image with platform $TARGETPLATFORM
+    ELSE
+        FROM "$base_image"
+        IF [ "$base_image" = "amazonlinux:1" ]
+            RUN yum -y install diffutils.x86_64
+        END
+        COPY ./known_hosts /tmp/expected-temp
+        RUN test -s /tmp/expected-temp
+        ARG target_file
+        IF [ "$target_file" = "existing_known_hosts" ]
+            RUN echo some-key >> /tmp/expected
+            RUN echo some-key >> $target_file
+        END
+        RUN cat /tmp/expected-temp >> /tmp/expected
+        DO --pass-args +ADD_KNOWN_HOSTS
+        LET expanded_target_file="$(eval echo $target_file)"
+        RUN diff /tmp/expected $(eval echo $expanded_target_file)
+    END
