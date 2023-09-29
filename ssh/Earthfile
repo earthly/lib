@@ -1,0 +1,16 @@
+VERSION 0.7
+
+# COPY_KNOWN_HOSTS will append some known public keys into the $target_file
+COPY_KNOWN_HOSTS:
+    COMMAND
+    ARG target_file=~/.ssh/known_hosts
+    ARG target_dir=$(eval echo $(dirname $target_file))
+    COPY +known-hosts/known_hosts /tmp/.
+    RUN mkdir -p $target_dir && cat /tmp/known_hosts >> $(eval echo $target_file)
+    RUN rm /tmp/known_hosts
+
+# known-hosts is used to copy the known_hosts file into the build context (internal use)
+known-hosts:
+    FROM alpine
+    COPY known_hosts .
+    SAVE ARTIFACT known_hosts
