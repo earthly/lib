@@ -6,26 +6,27 @@ VERSION 0.7
 CARGO:
     COMMAND
     ARG --required args
-    CACHE ./target/
     DO +REMOVE_SOURCE_FINGERPRINTS
     RUN --mount=type=cache,sharing=shared,target=$CARGO_HOME/registry \
         --mount=type=cache,sharing=shared,target=$CARGO_HOME/git \
+        --mount=type=cache,sharing=shared,target=target \
         cargo $args
 
-# REMOVE_SOURCE_FINGERPRINTS remove the Cargo fingerprint folders of the source packages.
+# REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
     COPY +get-stoml/stoml /tmp/stoml
     ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
-    CACHE ./target/
-    ARG fingerprint_folders = $(find target -name .fingerprint)
-    RUN for fingerprint_folder in $fingerprint_folders; do \
-          cd $fingerprint_folder; \
-          for source_lib in $source_libs; do \
-            find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
-          done \
-        done
+    RUN --mount=type=cache,sharing=shared,target=target \
+      find target -name .fingerprint; \
+      fingerprint_folders=$(find target -name .fingerprint) ; \
+      for fingerprint_folder in $fingerprint_folders; do \
+        cd $fingerprint_folder; \
+        for source_lib in $source_libs; do \
+          find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
+        done \
+      done
 
 get-stoml:
     FROM alpine:3.18.3
