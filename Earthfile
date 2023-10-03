@@ -12,6 +12,7 @@ install-dind-script:
 
 test:
     BUILD +test-install-dind-amd64
+    BUILD ./ssh+test-add-known-hosts
 
 test-install-dind-amd64:
     BUILD --platform=linux/amd64 +test-install-dind-for-image \
