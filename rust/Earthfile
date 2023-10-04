@@ -1,16 +1,40 @@
-VERSION 0.7
+VERSION --global-cache 0.7
 
 # CARGO caches the cargo command "cargo $cargo_args"
 # Arguments:
 #   - args (required): Cargo subcommand and its arguments
+#   - sweep_time (30 days): To remove from the cache those build files older than the specified time (in days)
+#   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
+#     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
+#     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
 CARGO:
     COMMAND
     ARG --required args
+    ARG sweep_time=30
+    ARG output
     DO +REMOVE_SOURCE_FINGERPRINTS
-    RUN --mount=type=cache,sharing=shared,target=$CARGO_HOME/registry \
-        --mount=type=cache,sharing=shared,target=$CARGO_HOME/git \
-        --mount=type=cache,sharing=shared,target=target \
-        cargo $args
+    RUN --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-registry",target=$CARGO_HOME/registry \
+        --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-git",target=$CARGO_HOME/git \
+        --mount=type=cache,mode=0777,target=target \
+        cargo sweep --help >/dev/null 2>&1 || { echo "cargo-sweep is required"; exit 1 ;}; \
+        cargo $args; \
+        cargo sweep --time $sweep_time
+    IF [ "$output" != "" ]
+      DO +COPY_FROM_TARGET_CACHE --regex=$output
+    END
+
+# COPY_FROM_TARGET_CACHE copies the files matching the regex from the target cache to the caller filesystem (image layers).
+COPY_FROM_TARGET_CACHE:
+    COMMAND
+    ARG regex
+    RUN --no-cache --mount=type=cache,mode=0777,target=target \
+        mkdir earthly_lib_rust_temp; \
+        cd target; \
+        find . -regextype posix-egrep -regex "./$regex" -exec cp --parents \{\} ../earthly_lib_rust_temp \; ; \
+        cd ..; \
+        echo "Copied output: $(du -hs earthly_lib_rust_temp | awk '{print $1}')";
+    RUN mkdir -p target; \
+        mv earthly_lib_rust_temp/* target;
 
 # REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
@@ -18,7 +42,7 @@ REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
     COPY +get-stoml/stoml /tmp/stoml
     ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
-    RUN --mount=type=cache,sharing=shared,target=target \
+    RUN --mount=type=cache,mode=0777,sharing=shared,target=target \
       find target -name .fingerprint; \
       fingerprint_folders=$(find target -name .fingerprint) ; \
       for fingerprint_folder in $fingerprint_folders; do \
