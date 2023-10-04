@@ -52,6 +52,7 @@ REMOVE_SOURCE_FINGERPRINTS:
         done \
       done
 
+# get-stoml gets the portable stoml binary
 get-stoml:
     FROM alpine:3.18.3
     RUN wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64; \
