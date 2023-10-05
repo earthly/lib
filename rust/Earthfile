@@ -1,4 +1,4 @@
-VERSION --global-cache 0.7
+VERSION 0.7
 
 # CARGO caches the cargo command "cargo $cargo_args"
 # Arguments:
