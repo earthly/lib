@@ -3,22 +3,18 @@ VERSION --global-cache 0.7
 # CARGO caches the cargo command "cargo $cargo_args"
 # Arguments:
 #   - args (required): Cargo subcommand and its arguments
-#   - sweep_time (30 days): To remove from the cache those build files older than the specified time (in days)
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
 CARGO:
     COMMAND
     ARG --required args
-    ARG sweep_time=30
     ARG output
     DO +REMOVE_SOURCE_FINGERPRINTS
     RUN --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-registry",target=$CARGO_HOME/registry \
         --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-git",target=$CARGO_HOME/git \
         --mount=type=cache,mode=0777,target=target \
-        cargo sweep --help >/dev/null 2>&1 || { echo "cargo-sweep is required"; exit 1 ;}; \
-        cargo $args; \
-        cargo sweep --time $sweep_time
+        cargo $args;
     IF [ "$output" != "" ]
       DO +COPY_FROM_TARGET_CACHE --regex=$output
     END
