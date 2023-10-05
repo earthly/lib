@@ -11,8 +11,8 @@ CARGO:
     ARG --required args
     ARG output
     DO +REMOVE_SOURCE_FINGERPRINTS
-    RUN --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-registry",target=$CARGO_HOME/registry \
-        --mount=type=cache,mode=0777,sharing=shared,id="cargo-home-git",target=$CARGO_HOME/git \
+    RUN --mount=type=cache,mode=0777,target=$CARGO_HOME/registry \
+        --mount=type=cache,mode=0777,target=$CARGO_HOME/git \
         --mount=type=cache,mode=0777,target=target \
         cargo $args;
     IF [ "$output" != "" ]
