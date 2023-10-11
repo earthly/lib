@@ -96,19 +96,16 @@ apt_get_update() {
 
 install_dockerd_debian_like() {
     export DEBIAN_FRONTEND=noninteractive
-    apt-get remove -y docker docker-engine docker.io containerd runc || true
+    apt-get remove -y docker.io docker-doc docker-compose podman-docker containerd runc || true
     apt_get_update
-    apt-get install -y \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        gnupg-agent \
-        software-properties-common
-    curl -fsSL "https://download.docker.com/linux/$distro/gpg" | apt-key add -
-    add-apt-repository \
-        "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/$distro \
-        $(lsb_release -cs) \
-        stable"
+    apt-get install -y ca-certificates curl gnupg
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+    echo \
+      "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null
     apt-get update # dont use apt_get_update since we must update the newly added apt repo
     apt-get install -y docker-ce docker-ce-cli containerd.io
 }
