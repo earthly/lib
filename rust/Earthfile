@@ -9,8 +9,11 @@ VERSION 0.7
 CARGO:
     COMMAND
     ARG --required args
+    ARG keep_fingerprints=false
     ARG output
-    DO +REMOVE_SOURCE_FINGERPRINTS
+    IF [ "$keep_fingerprints" = "false" ]
+       DO +REMOVE_SOURCE_FINGERPRINTS
+    END
     RUN --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/registry \
         --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/git \
         --mount=type=cache,mode=0777,target=target \
