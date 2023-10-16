@@ -1,4 +1,4 @@
-VERSION 0.6
+VERSION 0.7
 
 INSTALL_DIND:
     COMMAND
@@ -20,6 +20,7 @@ test-install-dind-amd64:
         --base_image=alpine:latest \
         --base_image=debian:stable \
         --base_image=debian:stable-slim \
+        --base_image=debian:oldstable \
         --base_image=ubuntu:latest \
         --base_image=amazonlinux:1 \
         --base_image=amazonlinux:2 \
