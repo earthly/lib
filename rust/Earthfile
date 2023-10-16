@@ -17,23 +17,16 @@ CARGO:
     RUN --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/registry \
         --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/git \
         --mount=type=cache,mode=0777,target=target \
-        cargo $args;
+        cargo $args; \
+        if [ -n "$output" ]; then \
+          mkdir /earthly_lib_rust_temp; \
+          cd target; \
+          find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents \{\} /earthly_lib_rust_temp \; ; \
+        fi
     IF [ "$output" != "" ]
-      DO +COPY_FROM_TARGET_CACHE --regex=$output
+      RUN mkdir -p target; \
+          mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
     END
-
-# COPY_FROM_TARGET_CACHE copies the files matching the regex from the target cache to the caller filesystem (image layers).
-COPY_FROM_TARGET_CACHE:
-    COMMAND
-    ARG regex
-    RUN --no-cache --mount=type=cache,mode=0777,target=target \
-        mkdir earthly_lib_rust_temp; \
-        cd target; \
-        find . -regextype posix-egrep -regex "./$regex" -exec cp --parents \{\} ../earthly_lib_rust_temp \; ; \
-        cd ..; \
-        echo "Copied output: $(du -hs earthly_lib_rust_temp | awk '{print $1}')";
-    RUN mkdir -p target; \
-        mv earthly_lib_rust_temp/* target;
 
 # REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
