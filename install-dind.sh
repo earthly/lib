@@ -142,7 +142,7 @@ install_jq() {
 }
 
 clean_after_install_debian_like() {
-  if [ "$apt_update_done" == "true" ]; then
+  if [ "$apt_update_done" = "true" ]; then
     echo "Cleaning apt after installs"
     apt-get clean
     rm -rf /var/lib/apt/lists/*
