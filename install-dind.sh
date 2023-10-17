@@ -141,6 +141,25 @@ install_jq() {
     esac
 }
 
+clean_after_install_debian_like() {
+  if [ "$apt_update_done" = "true" ]; then
+    echo "Cleaning apt after installs"
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+  fi
+}
+
+clean_after_install() {
+    case "$distro" in
+        alpine | amzn)
+        # nothing to clean
+        ;;
+        *)
+        clean_after_install_debian_like
+        ;;
+    esac
+}
+
 if [ "$(id -u)" != 0 ]; then
     echo "Warning: Docker-in-Earthly needs to be run as root user"
 fi
@@ -167,3 +186,5 @@ if ! detect_docker_compose; then
 else
     print_debug "docker-compose already installed"
 fi
+
+clean_after_install
