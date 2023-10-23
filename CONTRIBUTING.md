@@ -2,7 +2,7 @@
 
 ## Code of Conduct
 
-Please refer to [code-of-conduct.md](./code-of-conduct.md) for details.
+Please refer to the [CNCF Community Code of Conduct v1.0](https://github.com/cncf/foundation/blob/main/code-of-conduct.md)
 
 ## CLA
 
