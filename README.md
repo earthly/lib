@@ -1,6 +1,6 @@
 # lib
 
-Earthly's official collection of reusable UDCs.
+Earthly's official collection of [UDCs](https://docs.earthly.dev/docs/guides/udc).
 
 ## Contributing
 
