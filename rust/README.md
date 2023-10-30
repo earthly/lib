@@ -1,0 +1,93 @@
+# lib/rust
+
+Earthly's official collection of rust [UDCs](https://docs.earthly.dev/docs/guides/udc).
+
+## +CARGO
+
+CARGO runs the cargo command cargo $args caching the contents of `$CARGO_HOME/registry`, `$CARGO_HOME/git` and `target` for future builds of the current calling target. 
+
+### Arguments
+
+#### `args`
+Cargo subcommand and its arguments. Required
+
+
+#### `keep_fingerprints (false)`
+Do no remove source packages fingerprints. Use only when source packages have been `COPY`ed with `--keep-ts` option.
+Cargo caches compilations of packages in `target` folder based on their last modification timestamps. 
+By default, this UDC removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
+
+#### `output`
+Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers). 
+Use this argument when you want to `SAVE AS ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
+For example `--output="release/[^\./]+"` would keep all the files in /target/release that don't have any extension
+
+### Examples:
+
+Suppose the following project:
+```
+.
+├── Cargo.lock
+├── Cargo.toml
+├── deny.toml
+├── Earthfile
+├── package1
+│   ├── Cargo.toml
+│   └── src
+│       └── ...
+└── package2
+    ├── Cargo.toml
+    └── src
+        └── ...
+```
+
+The Earthfile would like:
+
+```earthfile
+VERSION 0.7
+ARG --global debian = bookworm
+
+# Importing via commit hash pinning because git tags can be changed
+IMPORT github.com/earthly/lib/rust:4cfebf74b5805ad943d325a94601e808afbf6e6f AS rust
+
+install:
+    FROM rust:1.73.0-$debian
+    RUN apt-get update -qq
+    RUN apt-get install --no-install-recommends -qq autoconf autotools-dev libtool-bin clang cmake bsdmainutils
+    RUN cargo install --locked cargo-deny cargo-llvm-cov
+    RUN rustup component add clippy
+    RUN rustup component add rustfmt
+    RUN rustup component add llvm-tools-preview
+
+source:
+    FROM +install
+    COPY --keep-ts Cargo.toml Cargo.lock ./
+    COPY --keep-ts deny.toml ./
+    COPY --dir package1 package2  ./
+
+# build builds with the Cargo release profile
+build:
+    FROM +source
+    DO rust+CARGO --args="build --release" --output="release/[^/\.]+"
+    SAVE ARTIFACT ./target/release/ target AS LOCAL artifact/target
+
+# test executes all unit and integration tests via Cargo
+test:
+    FROM +source
+    DO rust+CARGO --args="test"
+
+# fmt checks whether Rust code is formatted according to style guidelines
+fmt:
+    FROM +source
+    DO rust+CARGO --args="fmt --check"
+
+# lint runs cargo clippy on the source code
+lint:
+    FROM +source
+    DO rust+CARGO --args="clippy --all-features --all-targets -- -D warnings"
+
+# check-dependencies lints our dependencies via `cargo deny`
+check-dependencies:
+    FROM +source
+    DO rust+CARGO --args="deny --all-features check --deny warnings bans license sources"
+```
