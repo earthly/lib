@@ -62,8 +62,8 @@ The Earthfile would look like:
 VERSION 0.7
 ARG --global debian = bookworm
 
-# Importing via commit hash pinning because git tags can be changed
-IMPORT github.com/earthly/lib/rust:4cfebf74b5805ad943d325a94601e808afbf6e6f AS rust
+# Importing UDC definition from default branch (in a real case, specify version or commit to guarantee immutability)
+IMPORT github.com/earthly/lib/rust AS rust
 
 install:
     FROM rust:1.73.0-$debian
