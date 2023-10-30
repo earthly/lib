@@ -23,7 +23,7 @@ Regex to match the files within the target folder to be copied from the cache to
 
 Use this argument when you want to `SAVE AS ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
 
-For example `--output="release/[^\./]+"` would keep all the files in /target/release that don't have any extension
+For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension
 
 ### Examples:
 
@@ -44,7 +44,7 @@ Suppose the following project:
         └── ...
 ```
 
-The Earthfile would like:
+The Earthfile would look like:
 
 ```earthfile
 VERSION 0.7
