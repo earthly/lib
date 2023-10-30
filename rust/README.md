@@ -4,22 +4,25 @@ Earthly's official collection of rust [UDCs](https://docs.earthly.dev/docs/guide
 
 ## +CARGO
 
-CARGO runs the cargo command cargo $args caching the contents of `$CARGO_HOME/registry`, `$CARGO_HOME/git` and `target` for future builds of the current calling target. 
+This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME/registry`, `$CARGO_HOME/git` and `target` for future builds of the same calling target. 
 
 ### Arguments
 
 #### `args`
 Cargo subcommand and its arguments. Required
 
-
 #### `keep_fingerprints (false)`
 Do no remove source packages fingerprints. Use only when source packages have been `COPY`ed with `--keep-ts` option.
+
 Cargo caches compilations of packages in `target` folder based on their last modification timestamps. 
+
 By default, this UDC removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
 
 #### `output`
 Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers). 
+
 Use this argument when you want to `SAVE AS ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
+
 For example `--output="release/[^\./]+"` would keep all the files in /target/release that don't have any extension
 
 ### Examples:
