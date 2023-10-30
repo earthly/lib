@@ -33,7 +33,7 @@ By default, this UDC removes the fingerprints of the packages found in the sourc
 #### `output`
 Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers). 
 
-Use this argument when you want to `SAVE AS ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
+Use this argument when you want to `SAVE ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
 
 For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension.
 
