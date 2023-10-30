@@ -2,7 +2,9 @@ VERSION 0.7
 
 # CARGO caches the cargo command "cargo $cargo_args"
 # Arguments:
-#   - args (required): Cargo subcommand and its arguments
+#   - args: Cargo subcommand and its arguments. Required
+#   - keep_fingerprints (false): Do no remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
+#   - sweep_days (4): Number of days to retain target build artifacts in cache
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
@@ -10,19 +12,26 @@ CARGO:
     COMMAND
     ARG --required args
     ARG keep_fingerprints=false
+    ARG sweep_days=4
     ARG output
     IF [ "$keep_fingerprints" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
+    DO +INSTALL_CARGO_SWEEP
     RUN --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/registry \
         --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/git \
+        --mount=type=cache,mode=0777,target=/tmp/earthly \
         --mount=type=cache,mode=0777,target=target \
+        echo "Running cargo $args" ; \
         cargo $args; \
         if [ -n "$output" ]; then \
+          echo "Copying output files" ; \
           mkdir /earthly_lib_rust_temp; \
           cd target; \
           find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents \{\} /earthly_lib_rust_temp \; ; \
-        fi
+        fi; \
+        echo "Running cargo sweep -r -t $sweep_days" ; \
+        /tmp/earthly/cargo-sweep sweep -r -t $sweep_days;
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
@@ -32,10 +41,11 @@ CARGO:
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
-    COPY +get-stoml/stoml /tmp/stoml
-    ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
-    RUN --mount=type=cache,mode=0777,sharing=shared,target=target \
-      find target -name .fingerprint; \
+    DO +INSTALL_STOML
+    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
+    --mount=type=cache,mode=0777,sharing=shared,target=target \
+      set -e; \
+      source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/earthly/stoml {} package.name; printf "\n"' \;) ;\
       fingerprint_folders=$(find target -name .fingerprint) ; \
       for fingerprint_folder in $fingerprint_folders; do \
         cd $fingerprint_folder; \
@@ -44,9 +54,23 @@ REMOVE_SOURCE_FINGERPRINTS:
         done \
       done
 
-# get-stoml gets the portable stoml binary
-get-stoml:
-    FROM alpine:3.18.3
-    RUN wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64; \
-       chmod +x stoml
-    SAVE ARTIFACT ./stoml stoml
+# INSTALL_STOML installs, https://github.com/freshautomations/stoml in earthly helper cache at /tmp/earthly/stoml, if it doesn't exist already
+INSTALL_STOML:
+    COMMAND
+    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
+        set -e; \
+        if [ ! -f /tmp/earthly/stoml ]; then \
+          cd /tmp/earthly/; \
+          wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64; \
+          chmod +x stoml; \
+        fi;
+
+# INSTALL_CARGO_SWEEP installs cargo-sweep in earthly helper cache at: /tmp/earthly/cargo-sweep, if it doesn't exist already
+INSTALL_CARGO_SWEEP:
+    COMMAND
+    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
+        set -e; \
+        if [ ! -f /tmp/earthly/cargo-sweep ]; then \
+          cargo install cargo-sweep; \
+          cp $CARGO_HOME/bin/cargo-sweep /tmp/earthly/; \
+        fi;
