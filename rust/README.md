@@ -69,10 +69,9 @@ install:
   FROM rust:1.73.0-$debian
   RUN apt-get update -qq
   RUN apt-get install --no-install-recommends -qq autoconf autotools-dev libtool-bin clang cmake bsdmainutils
-  RUN cargo install --locked cargo-deny cargo-llvm-cov
+  RUN cargo install --locked cargo-deny
   RUN rustup component add clippy
   RUN rustup component add rustfmt
-  RUN rustup component add llvm-tools-preview
 
 source:
   FROM +install
