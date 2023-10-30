@@ -1,6 +1,7 @@
 VERSION 0.7
 
-# CARGO runs the cargo command "cargo $args"
+# CARGO runs the cargo command "cargo $args".
+# This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required
 #   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option

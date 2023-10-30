@@ -18,6 +18,9 @@ Then, just use it in your own targets and UDCs:
 DO rust+CARGO ...
 ```
 
+### Thread safety
+This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
+
 ### Arguments
 
 #### `args`
