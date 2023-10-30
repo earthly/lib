@@ -60,7 +60,7 @@ The Earthfile would look like:
 
 ```earthfile
 VERSION 0.7
-ARG --global debian = bookworm
+ARG --global debian=bookworm
 
 # Importing UDC definition from default branch (in a real case, specify version or commit to guarantee immutability)
 IMPORT github.com/earthly/lib/rust AS rust
