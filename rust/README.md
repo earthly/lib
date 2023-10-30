@@ -6,6 +6,18 @@ Earthly's official collection of rust [UDCs](https://docs.earthly.dev/docs/guide
 
 This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME/registry`, `$CARGO_HOME/git` and `target` for future builds of the same calling target. 
 
+### Usage
+
+First, import the UDC up in your Earthfile:
+```earthfile
+IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
+```
+
+Then, just use it in your own targets and UDCs:
+```earthfile
+DO rust+CARGO ...
+```
+
 ### Arguments
 
 #### `args`
