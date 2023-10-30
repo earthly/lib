@@ -66,43 +66,43 @@ ARG --global debian = bookworm
 IMPORT github.com/earthly/lib/rust AS rust
 
 install:
-    FROM rust:1.73.0-$debian
-    RUN apt-get update -qq
-    RUN apt-get install --no-install-recommends -qq autoconf autotools-dev libtool-bin clang cmake bsdmainutils
-    RUN cargo install --locked cargo-deny cargo-llvm-cov
-    RUN rustup component add clippy
-    RUN rustup component add rustfmt
-    RUN rustup component add llvm-tools-preview
+  FROM rust:1.73.0-$debian
+  RUN apt-get update -qq
+  RUN apt-get install --no-install-recommends -qq autoconf autotools-dev libtool-bin clang cmake bsdmainutils
+  RUN cargo install --locked cargo-deny cargo-llvm-cov
+  RUN rustup component add clippy
+  RUN rustup component add rustfmt
+  RUN rustup component add llvm-tools-preview
 
 source:
-    FROM +install
-    COPY --keep-ts Cargo.toml Cargo.lock ./
-    COPY --keep-ts deny.toml ./
-    COPY --dir package1 package2  ./
+  FROM +install
+  COPY --keep-ts Cargo.toml Cargo.lock ./
+  COPY --keep-ts deny.toml ./
+  COPY --dir package1 package2  ./
 
 # build builds with the Cargo release profile
 build:
-    FROM +source
-    DO rust+CARGO --args="build --release" --output="release/[^/\.]+"
-    SAVE ARTIFACT ./target/release/ target AS LOCAL artifact/target
+  FROM +source
+  DO rust+CARGO --args="build --release" --output="release/[^/\.]+"
+  SAVE ARTIFACT ./target/release/ target AS LOCAL artifact/target
 
 # test executes all unit and integration tests via Cargo
 test:
-    FROM +source
-    DO rust+CARGO --args="test"
+  FROM +source
+  DO rust+CARGO --args="test"
 
 # fmt checks whether Rust code is formatted according to style guidelines
 fmt:
-    FROM +source
-    DO rust+CARGO --args="fmt --check"
+  FROM +source
+  DO rust+CARGO --args="fmt --check"
 
 # lint runs cargo clippy on the source code
 lint:
-    FROM +source
-    DO rust+CARGO --args="clippy --all-features --all-targets -- -D warnings"
+  FROM +source
+  DO rust+CARGO --args="clippy --all-features --all-targets -- -D warnings"
 
 # check-dependencies lints our dependencies via `cargo deny`
 check-dependencies:
-    FROM +source
-    DO rust+CARGO --args="deny --all-features check --deny warnings bans license sources"
+  FROM +source
+  DO rust+CARGO --args="deny --all-features check --deny warnings bans license sources"
 ```
