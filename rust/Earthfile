@@ -1,8 +1,10 @@
 VERSION 0.7
 
-# CARGO caches the cargo command "cargo $cargo_args"
+# CARGO runs the cargo command "cargo $args".
+# This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
 # Arguments:
-#   - args (required): Cargo subcommand and its arguments
+#   - args: Cargo subcommand and its arguments. Required
+#   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
