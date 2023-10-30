@@ -12,7 +12,7 @@ This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HO
 Cargo subcommand and its arguments. Required
 
 #### `keep_fingerprints (false)`
-Do no remove source packages fingerprints. Use only when source packages have been `COPY`ed with `--keep-ts` option.
+Do not remove source packages fingerprints. Use only when source packages have been `COPY`ed with `--keep-ts` option.
 
 Cargo caches compilations of packages in `target` folder based on their last modification timestamps. 
 
