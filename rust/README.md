@@ -21,7 +21,7 @@ DO rust+CARGO ...
 ### Arguments
 
 #### `args`
-Cargo subcommand and its arguments. Required
+Cargo subcommand and its arguments. Required.
 
 #### `keep_fingerprints (false)`
 Do not remove source packages fingerprints. Use only when source packages have been `COPY`ed with `--keep-ts` option.
@@ -35,7 +35,7 @@ Regex to match the files within the target folder to be copied from the cache to
 
 Use this argument when you want to `SAVE AS ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset. 
 
-For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension
+For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension.
 
 ### Examples:
 
