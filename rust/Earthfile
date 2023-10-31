@@ -28,8 +28,10 @@ CARGO:
           find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} /earthly_lib_rust_temp \; ;
           cd ..;
         fi;
-        echo \"Running cargo sweep -dry-run -r -t $sweep_days\" ;
-        /tmp/earthly/cargo-sweep sweep --dry-run -r -t $sweep_days;"
+        echo \"Running cargo sweep -r -t $sweep_days\" ;
+        /tmp/earthly/cargo-sweep sweep -r -t $sweep_days;
+        echo \"Running cargo sweep -r -i\" ;
+        /tmp/earthly/cargo-sweep sweep -r -i;"
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
