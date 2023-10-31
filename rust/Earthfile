@@ -1,9 +1,10 @@
 VERSION 0.7
 
-# CARGO caches the cargo command "cargo $cargo_args"
+# CARGO runs the cargo command "cargo $args".
+# This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required
-#   - keep_fingerprints (false): Do no remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
+#   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
 #   - sweep_days (4): Number of days to retain target build artifacts in cache
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
@@ -30,8 +31,8 @@ CARGO:
           cd target; \
           find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents \{\} /earthly_lib_rust_temp \; ; \
         fi; \
-        echo "Running cargo sweep -r -t $sweep_days" ; \
-        /tmp/earthly/cargo-sweep sweep -r -t $sweep_days;
+        echo "Running cargo sweep -dry-run -r -i -t $sweep_days" ; \
+        /tmp/earthly/cargo-sweep sweep --dry-run -r -i -t $sweep_days;
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
