@@ -1,4 +1,4 @@
-VERSION 0.7
+VERSION --global-cache 0.7
 
 # CARGO runs the cargo command "cargo $args".
 # This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
@@ -19,20 +19,17 @@ CARGO:
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
     DO +INSTALL_CARGO_SWEEP
-    RUN --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/registry \
-        --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/git \
-        --mount=type=cache,mode=0777,target=/tmp/earthly \
-        --mount=type=cache,mode=0777,target=target \
-        echo "Running cargo $args" ; \
-        cargo $args; \
-        if [ -n "$output" ]; then \
-          echo "Copying output files" ; \
-          mkdir /earthly_lib_rust_temp; \
-          cd target; \
-          find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents \{\} /earthly_lib_rust_temp \; ; \
-        fi; \
-        echo "Running cargo sweep -dry-run -r -t $sweep_days" ; \
-        /tmp/earthly/cargo-sweep sweep --dry-run -r -t $sweep_days;
+    DO +RUN_WITH_CACHE --command="echo \"Running cargo $args\" ;
+        cargo $args;
+        if [ -n \"$output\" ]; then
+          echo \"Copying output files\" ;
+          mkdir /earthly_lib_rust_temp;
+          cd target;
+          find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} /earthly_lib_rust_temp \; ;
+          cd ..;
+        fi;
+        echo \"Running cargo sweep -dry-run -r -t $sweep_days\" ;
+        /tmp/earthly/cargo-sweep sweep --dry-run -r -t $sweep_days;"
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
@@ -43,35 +40,48 @@ CARGO:
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
     DO +INSTALL_STOML
-    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
-    --mount=type=cache,mode=0777,sharing=shared,target=target \
-      set -e; \
-      source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/earthly/stoml {} package.name; printf "\n"' \;) ;\
-      fingerprint_folders=$(find target -name .fingerprint) ; \
-      for fingerprint_folder in $fingerprint_folders; do \
-        cd $fingerprint_folder; \
-        for source_lib in $source_libs; do \
-          find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
-        done \
-      done
+    DO +RUN_WITH_CACHE --command="set -e;
+      source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/earthly/stoml {} package.name; printf "\n"' \;) ;
+      fingerprint_folders=$(find target -name .fingerprint) ;
+      for fingerprint_folder in $fingerprint_folders; do
+        cd $fingerprint_folder;
+        for source_lib in $source_libs; do
+          find . -maxdepth 1 -regex \"\./$source_lib-[^-]+\" -exec rm -rf {} \; ;
+        done
+      done"
 
-# INSTALL_STOML installs, https://github.com/freshautomations/stoml in earthly helper cache at /tmp/earthly/stoml, if it doesn't exist already
+# INSTALL_STOML installs https://github.com/freshautomations/stoml in earthly helper cache at /tmp/earthly/stoml, if it doesn't exist already
 INSTALL_STOML:
     COMMAND
-    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
-        set -e; \
-        if [ ! -f /tmp/earthly/stoml ]; then \
-          cd /tmp/earthly/; \
-          wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64; \
-          chmod +x stoml; \
-        fi;
+    DO +RUN_WITH_CACHE --command="set -e;
+        if [ ! -f /tmp/earthly/stoml ]; then
+          cd /tmp/earthly/;
+          wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64;
+          chmod +x stoml;
+        fi;"
 
 # INSTALL_CARGO_SWEEP installs cargo-sweep in earthly helper cache at: /tmp/earthly/cargo-sweep, if it doesn't exist already
 INSTALL_CARGO_SWEEP:
     COMMAND
-    RUN --mount=type=cache,mode=0777,target=/tmp/earthly \
-        set -e; \
-        if [ ! -f /tmp/earthly/cargo-sweep ]; then \
-          cargo install cargo-sweep; \
-          cp $CARGO_HOME/bin/cargo-sweep /tmp/earthly/; \
-        fi;
+    DO +RUN_WITH_CACHE --command="set -e;
+        if [ ! -f /tmp/earthly/cargo-sweep ]; then
+          cargo install cargo-sweep;
+          cp $CARGO_HOME/bin/cargo-sweep /tmp/earthly/;
+        fi;"
+
+# RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
+# Arguments:
+#   - command (required): Command to run, can be any expression.
+#
+# This implementation is not expected to significantly change. Prefer using the
+# `CARGO` UDC if you can, so you can get future improvements transparently.
+RUN_WITH_CACHE:
+    COMMAND
+    ARG command
+    RUN --mount=type=cache,mode=0777,id="earthly-cargo-home-registry",sharing=shared,target=$CARGO_HOME/registry \
+        --mount=type=cache,mode=0777,id="earthly-cargo-home-git",sharing=shared,target=$CARGO_HOME/git \
+        --mount=type=cache,mode=0777,id="earthly-cargo-deps",sharing=shared,target=/tmp/earthly \
+        --mount=type=cache,mode=0777,target=target \
+    set -e; \
+    printf "Running:\n      $command\n"; \
+    eval $command
