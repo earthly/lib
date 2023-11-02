@@ -86,10 +86,13 @@ INSTALL_CARGO_SWEEP:
 RUN_WITH_CACHE:
     COMMAND
     ARG command
+    ARG EARTHLY_TARGET_PROJECT_NO_TAG
+    ARG CACHE_ID="${EARTHLY_TARGET_PROJECT_NO_TAG}#earthly-cargo-cache"
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
     ENV CARGO_INSTALL_ROOT=$CARGO_HOME
     ENV CARGO_HOME="/earthly/.cargo"
-    RUN --mount=type=cache,mode=0777,id="earthly-cargo-cache",sharing=shared,target=/earthly \
+    RUN echo $CACHE_ID
+    RUN --mount=type=cache,mode=0777,id=$CACHE_ID,sharing=shared,target=/earthly \
         --mount=type=cache,mode=0777,target=target \
     set -e; \
     mkdir -p $CARGO_HOME; \
