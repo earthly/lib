@@ -3,12 +3,12 @@ VERSION --global-cache 0.7
 # CARGO runs the cargo command "cargo $args".
 # This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
 # Arguments:
-#   - args: Cargo subcommand and its arguments. Required
-#   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
-#   - sweep_days (4): Number of days to retain target build artifacts in cache
+#   - args: Cargo subcommand and its arguments. Required.
+#   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option.
+#   - sweep_days (4): The UDC uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
-#     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
+#     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
     COMMAND
     ARG --required args
@@ -38,7 +38,7 @@ CARGO:
     END
 
 # REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
-# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
+# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts).
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
     COPY +get-tomljson/tomljson /tmp/tomljson
@@ -54,7 +54,7 @@ REMOVE_SOURCE_FINGERPRINTS:
         done
       done"
 
-# get-tomljson gets the portable tomljson binary
+# get-tomljson gets the portable tomljson binary.
 get-tomljson:
     FROM alpine:3.18.3
     ARG USERARCH
@@ -64,14 +64,14 @@ get-tomljson:
         chmod +x tomljson
     SAVE ARTIFACT ./tomljson tomljson
 
-# get-jq gets the portable jq binary
+# get-jq gets the portable jq binary.
 get-jq:
     FROM alpine:3.18.3
     RUN apk add jq;
     ARG jq=$(which jq)
     SAVE ARTIFACT $jq jq
 
-# INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already
+# INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already.
 INSTALL_CARGO_SWEEP:
     COMMAND
     DO +RUN_WITH_CACHE --command="set -e;
@@ -83,16 +83,14 @@ INSTALL_CARGO_SWEEP:
 # Arguments:
 #   - command (required): Command to run, can be any expression.
 #
-# This implementation is not expected to significantly change. Prefer using the
-# `CARGO` UDC if you can, so you can get future improvements transparently.
+# This implementation is not expected to significantly change. Prefer using the `CARGO` UDC if you can, so you can get future improvements transparently.
 RUN_WITH_CACHE:
     COMMAND
     ARG command
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG CACHE_ID="${EARTHLY_TARGET_PROJECT_NO_TAG}#earthly-cargo-cache"
     # $ORIGINAL_CARGO_HOME/bin will contain the cargo and rust binaries, as well as the installed crates.
-    # We save it to reset it back at the end
-    # This location is presumed to be in the calling target layers filesystem rather than in other mount cache
+    # We save it to reset it back at the end. This location is presumed to be in the calling target layers filesystem rather than in other mount cache.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
     # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
     # This way, if BK garbage-collects them, the build is not broken
