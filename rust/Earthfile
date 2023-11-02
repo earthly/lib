@@ -87,6 +87,7 @@ RUN_WITH_CACHE:
     COMMAND
     ARG command
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
+    ENV CARGO_INSTALL_ROOT=$CARGO_HOME
     ENV CARGO_HOME="/earthly/.cargo"
     RUN --mount=type=cache,mode=0777,id="earthly-cargo-cache",sharing=shared,target=/earthly \
         --mount=type=cache,mode=0777,target=target \
