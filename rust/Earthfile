@@ -29,9 +29,9 @@ CARGO:
           cd ..;
         fi;
         echo \"Running cargo sweep -r -t $sweep_days\" ;
-        /tmp/earthly/cargo-sweep sweep -r -t $sweep_days;
+        cargo sweep -r -t $sweep_days;
         echo \"Running cargo sweep -r -i\" ;
-        /tmp/earthly/cargo-sweep sweep -r -i;"
+        cargo sweep -r -i;"
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
@@ -43,32 +43,32 @@ REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
     DO +INSTALL_STOML
     DO +RUN_WITH_CACHE --command="set -e;
-      source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/earthly/stoml {} package.name; printf "\n"' \;) ;
-      fingerprint_folders=$(find target -name .fingerprint) ;
-      for fingerprint_folder in $fingerprint_folders; do
-        cd $fingerprint_folder;
-        for source_lib in $source_libs; do
-          find . -maxdepth 1 -regex \"\./$source_lib-[^-]+\" -exec rm -rf {} \; ;
+      source_libs=\$(find . -name Cargo.toml -exec bash -c '/earthly/bin/stoml {} package.name; printf \"\\n\"' \\;) ;
+      fingerprint_folders=\$(find target -name .fingerprint) ;
+      echo \"deleting fingerprints:\";
+      for fingerprint_folder in \$fingerprint_folders; do
+        cd \$fingerprint_folder;
+        for source_lib in \$source_libs; do
+          find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
         done
       done"
 
-# INSTALL_STOML installs https://github.com/freshautomations/stoml in earthly helper cache at /tmp/earthly/stoml, if it doesn't exist already
+# INSTALL_STOML installs https://github.com/freshautomations/stoml in the cache at /earthly/bin/stoml, if it doesn't exist already
 INSTALL_STOML:
     COMMAND
     DO +RUN_WITH_CACHE --command="set -e;
-        if [ ! -f /tmp/earthly/stoml ]; then
-          cd /tmp/earthly/;
+        if [ ! -f /earthly/bin/stoml ]; then
+          cd /earthly/bin;
           wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64;
           chmod +x stoml;
         fi;"
 
-# INSTALL_CARGO_SWEEP installs cargo-sweep in earthly helper cache at: /tmp/earthly/cargo-sweep, if it doesn't exist already
+# INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already
 INSTALL_CARGO_SWEEP:
     COMMAND
     DO +RUN_WITH_CACHE --command="set -e;
-        if [ ! -f /tmp/earthly/cargo-sweep ]; then
+        if [ ! -f \$CARGO_HOME/bin/cargo-sweep ]; then
           cargo install cargo-sweep;
-          cp $CARGO_HOME/bin/cargo-sweep /tmp/earthly/;
         fi;"
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
@@ -80,10 +80,13 @@ INSTALL_CARGO_SWEEP:
 RUN_WITH_CACHE:
     COMMAND
     ARG command
-    RUN --mount=type=cache,mode=0777,id="earthly-cargo-home-registry",sharing=shared,target=$CARGO_HOME/registry \
-        --mount=type=cache,mode=0777,id="earthly-cargo-home-git",sharing=shared,target=$CARGO_HOME/git \
-        --mount=type=cache,mode=0777,id="earthly-cargo-deps",sharing=shared,target=/tmp/earthly \
+    ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
+    ENV CARGO_HOME="/earthly/.cargo"
+    RUN --mount=type=cache,mode=0777,id="earthly-cargo-cache",sharing=shared,target=/earthly \
         --mount=type=cache,mode=0777,target=target \
     set -e; \
+    mkdir -p $CARGO_HOME; \
+    mkdir -p /earthly/bin ;\
     printf "Running:\n      $command\n"; \
     eval $command
+    ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
