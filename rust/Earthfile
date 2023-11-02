@@ -74,7 +74,7 @@ INSTALL_CARGO_SWEEP:
     COMMAND
     DO +RUN_WITH_CACHE --command="set -e;
         if [ ! -f \$CARGO_HOME/bin/cargo-sweep ]; then
-          cargo install cargo-sweep;
+          cargo install cargo-sweep --root \$CARGO_HOME;
         fi;"
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
