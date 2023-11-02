@@ -57,7 +57,9 @@ REMOVE_SOURCE_FINGERPRINTS:
 # get-tomljson gets the portable tomljson binary
 get-tomljson:
     FROM alpine:3.18.3
-    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v2.1.0/tomljson_2.1.0_linux_amd64.tar.xz; \
+    ARG USERARCH
+    ARG version=2.1.0
+    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz; \
         tar -xf tomljson.tar.xz; \
         chmod +x tomljson
     SAVE ARTIFACT ./tomljson tomljson
