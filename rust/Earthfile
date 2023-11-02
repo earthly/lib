@@ -88,8 +88,14 @@ RUN_WITH_CACHE:
     ARG command
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG CACHE_ID="${EARTHLY_TARGET_PROJECT_NO_TAG}#earthly-cargo-cache"
+    # $ORIGINAL_CARGO_HOME/bin will contain the cargo and rust binaries, as well as the installed crates.
+    # We save it to reset it back at the end
+    # This location is presumed to be in the calling target layers filesystem rather than in other mount cache
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
-    ENV CARGO_INSTALL_ROOT=$CARGO_HOME
+    # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
+    # This way, if BK garbage-collects them, the build is not broken
+    ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
+    # We need $CARGO_HOME/.package-cache within the earthly shared-mount-cache, so cargo can properly synchronize parallel access to $CARGO_HOME resources.
     ENV CARGO_HOME="/earthly/.cargo"
     RUN echo $CACHE_ID
     RUN --mount=type=cache,mode=0777,id=$CACHE_ID,sharing=shared,target=/earthly \
