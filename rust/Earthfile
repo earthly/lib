@@ -23,7 +23,7 @@ CARGO:
         cargo $args;
         if [ -n \"$output\" ]; then
           echo \"Copying output files\" ;
-          mkdir /earthly_lib_rust_temp;
+          mkdir -p /earthly_lib_rust_temp;
           cd target;
           find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} /earthly_lib_rust_temp \; ;
           cd ..;
@@ -41,9 +41,10 @@ CARGO:
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
-    DO +INSTALL_STOML
+    COPY +get-tomljson/tomljson /tmp/tomljson
+    COPY +get-jq/jq /tmp/jq
     DO +RUN_WITH_CACHE --command="set -e;
-      source_libs=\$(find . -name Cargo.toml -exec bash -c '/earthly/bin/stoml {} package.name; printf \"\\n\"' \\;) ;
+      source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | jq -r .package.name; printf \"\\n\"' \\;) ;
       fingerprint_folders=\$(find target -name .fingerprint) ;
       echo \"deleting fingerprints:\";
       for fingerprint_folder in \$fingerprint_folders; do
@@ -53,15 +54,20 @@ REMOVE_SOURCE_FINGERPRINTS:
         done
       done"
 
-# INSTALL_STOML installs https://github.com/freshautomations/stoml in the cache at /earthly/bin/stoml, if it doesn't exist already
-INSTALL_STOML:
-    COMMAND
-    DO +RUN_WITH_CACHE --command="set -e;
-        if [ ! -f /earthly/bin/stoml ]; then
-          cd /earthly/bin;
-          wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64;
-          chmod +x stoml;
-        fi;"
+# get-tomljson gets the portable tomljson binary
+get-tomljson:
+    FROM alpine:3.18.3
+    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v2.1.0/tomljson_2.1.0_linux_amd64.tar.xz; \
+        tar -xf tomljson.tar.xz; \
+        chmod +x tomljson
+    SAVE ARTIFACT ./tomljson tomljson
+
+# get-jq gets the portable jq binary
+get-jq:
+    FROM alpine:3.18.3
+    RUN apk add jq;
+    ARG jq=$(which jq)
+    SAVE ARTIFACT $jq jq
 
 # INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already
 INSTALL_CARGO_SWEEP:
