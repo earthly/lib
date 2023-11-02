@@ -96,7 +96,6 @@ RUN_WITH_CACHE:
         --mount=type=cache,mode=0777,target=target \
     set -e; \
     mkdir -p $CARGO_HOME; \
-    mkdir -p /earthly/bin ;\
     printf "Running:\n      $command\n"; \
     eval $command
     ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
