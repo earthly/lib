@@ -11,8 +11,11 @@ install-dind-script:
     SAVE ARTIFACT ./install-dind.sh
 
 test:
+    FROM alpine:3.18
     BUILD +test-install-dind-amd64
-    BUILD ./ssh+test-add-known-hosts
+    FOR dir IN "ssh git"
+        BUILD ./$dir+test
+    END
 
 test-install-dind-amd64:
     BUILD --platform=linux/amd64 +test-install-dind-for-image \
