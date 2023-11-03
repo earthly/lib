@@ -1,6 +1,6 @@
 VERSION --arg-scope-and-set 0.7
 
-# DEEP_CLONE deep clones the provided git repository
+# DEEP_CLONE deep clones the provided git url
 DEEP_CLONE:
     COMMAND
     ARG USE_GIT_ENV="false"
