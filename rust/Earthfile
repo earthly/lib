@@ -19,7 +19,8 @@ CARGO:
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
     DO +INSTALL_CARGO_SWEEP
-    DO +RUN_WITH_CACHE --command="echo \"Running cargo $args\" ;
+    DO +RUN_WITH_CACHE --command="set -e;
+        echo \"Running cargo $args\" ;
         cargo $args;
         if [ -n \"$output\" ]; then
           echo \"Copying output files\" ;
@@ -88,7 +89,7 @@ INSTALL_CARGO_SWEEP:
 # This implementation is not expected to significantly change. Prefer using the `CARGO` UDC if you can, so you can get future improvements transparently.
 RUN_WITH_CACHE:
     COMMAND
-    ARG command
+    ARG --required command
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG CACHE_ID="${EARTHLY_TARGET_PROJECT_NO_TAG}#earthly-cargo-cache"
     # $ORIGINAL_CARGO_HOME/bin will contain the cargo and rust binaries, as well as the installed crates.
