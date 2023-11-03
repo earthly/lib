@@ -28,4 +28,8 @@ jobs:
           mirrors = [\"registry-1.docker.io.mirror.corp.earthly.dev\"]'"
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Run tests
-        run: earthly --ci -P --org earthly-technologies --satellite lib +test
+        run: |-
+          earthly config git "{github.com: {auth: ssh, user: git}}" && \
+          eval $(ssh-agent) && \
+          earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
+          earthly --ci -P --org earthly-technologies --satellite lib +test
