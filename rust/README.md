@@ -8,9 +8,9 @@ This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HO
 
 ### Usage
 
-First, import the UDC up in your Earthfile. Also, the UDC makes use of global caches, so make sure to enable the feature flag as follows:
+First, import the UDC up in your Earthfile:
 ```earthfile
-VERSION --global-cache 0.7
+VERSION 0.7
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
 
