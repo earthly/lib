@@ -10,6 +10,7 @@ This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HO
 
 First, import the UDC up in your Earthfile:
 ```earthfile
+VERSION 0.7
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
 
@@ -32,6 +33,9 @@ Do not remove source packages fingerprints. Use only when source packages have b
 Cargo caches compilations of packages in `target` folder based on their last modification timestamps. 
 
 By default, this UDC removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
+
+#### `sweep_days (4)`
+The UDC uses [cargo-sweep](https://github.com/holmgr/cargo-sweep) to clean build artifacts that haven't been accessed for this number of days.
 
 #### `output`
 Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers). 
