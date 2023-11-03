@@ -11,7 +11,7 @@ ADD_KNOWN_HOSTS:
 
 # known-hosts is used to copy the known_hosts file into the build context (internal use)
 known-hosts:
-    FROM alpine:3.18
+    FROM alpine:3.18.4
     COPY known_hosts .
     SAVE ARTIFACT known_hosts
 
