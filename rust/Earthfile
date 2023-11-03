@@ -45,15 +45,15 @@ REMOVE_SOURCE_FINGERPRINTS:
     COPY +get-tomljson/tomljson /tmp/tomljson
     COPY +get-jq/jq /tmp/jq
     DO +RUN_WITH_CACHE --command="set -e;
-      source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
-      fingerprint_folders=\$(find target -name .fingerprint) ;
-      echo \"deleting fingerprints:\";
-      for fingerprint_folder in \$fingerprint_folders; do
-        cd \$fingerprint_folder;
-        for source_lib in \$source_libs; do
-          find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
-        done
-      done"
+        source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
+        fingerprint_folders=\$(find target -name .fingerprint) ;
+        echo \"deleting fingerprints:\";
+        for fingerprint_folder in \$fingerprint_folders; do
+          cd \$fingerprint_folder;
+          for source_lib in \$source_libs; do
+            find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
+          done
+        done"
 
 # get-tomljson gets the portable tomljson binary.
 get-tomljson:
@@ -104,9 +104,9 @@ RUN_WITH_CACHE:
     RUN echo $CACHE_ID
     RUN --mount=type=cache,mode=0777,id=$CACHE_ID,sharing=shared,target=/earthly \
         --mount=type=cache,mode=0777,target=target \
-    set -e; \
-    mkdir -p $CARGO_HOME; \
-    printf "Running:\n      $command\n"; \
-    eval $command
+        set -e; \
+        mkdir -p $CARGO_HOME; \
+        printf "Running:\n      $command\n"; \
+        eval $command
     ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_INSTALL_ROOT
