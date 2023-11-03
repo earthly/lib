@@ -44,7 +44,7 @@ REMOVE_SOURCE_FINGERPRINTS:
     COPY +get-tomljson/tomljson /tmp/tomljson
     COPY +get-jq/jq /tmp/jq
     DO +RUN_WITH_CACHE --command="set -e;
-      source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | jq -r .package.name; printf \"\\n\"' \\;) ;
+      source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
       fingerprint_folders=\$(find target -name .fingerprint) ;
       echo \"deleting fingerprints:\";
       for fingerprint_folder in \$fingerprint_folders; do
@@ -62,14 +62,16 @@ get-tomljson:
     RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz; \
         tar -xf tomljson.tar.xz; \
         chmod +x tomljson
-    SAVE ARTIFACT ./tomljson tomljson
+    SAVE ARTIFACT tomljson
 
 # get-jq gets the portable jq binary.
 get-jq:
     FROM alpine:3.18.3
-    RUN apk add jq;
-    ARG jq=$(which jq)
-    SAVE ARTIFACT $jq jq
+    ARG USERARCH
+    ARG version=1.7
+    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH}; \
+        chmod +x jq
+    SAVE ARTIFACT jq
 
 # INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already.
 INSTALL_CARGO_SWEEP:
