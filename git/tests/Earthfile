@@ -11,9 +11,9 @@ all:
         --base_image=ubuntu:latest \
         --base_image=amazonlinux:1 \
         --base_image=amazonlinux:2 \
-        --GIT_URL=https://github.com/earthly/lib.git \
-        --GIT_URL=git@github.com:earthly/lib.git \
-        --GIT_URL=git@github.com:earthly/lib \
+        --GIT_URL=https://github.com/earthly/hello-world.git \
+        --GIT_URL=git@github.com:earthly/hello-world.git \
+        --GIT_URL=git@github.com:earthly/hello-world \
         --SECRET_PATH="" \
         --SECRET_PATH="littleredcorvette-id_rsa" \
         --DEST_DIR="" \
