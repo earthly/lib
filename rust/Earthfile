@@ -94,6 +94,7 @@ RUN_WITH_CACHE:
     # $ORIGINAL_CARGO_HOME/bin will contain the cargo and rust binaries, as well as the installed crates.
     # We save it to reset it back at the end. This location is presumed to be in the calling target layers filesystem rather than in other mount cache.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
+    ARG ORIGINAL_CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT
     # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
     # This way, if BK garbage-collects them, the build is not broken
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
@@ -107,3 +108,4 @@ RUN_WITH_CACHE:
     printf "Running:\n      $command\n"; \
     eval $command
     ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
+    ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_INSTALL_ROOT
