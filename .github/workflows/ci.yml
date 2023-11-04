@@ -38,7 +38,7 @@ jobs:
           earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
           earthly --ci -P --org earthly-technologies --satellite lib +test
   test-native-arm:
-    name: +test
+    name: +test-native-arm
     runs-on: ubuntu-latest
     env:
       FORCE_COLOR: 1
