@@ -60,8 +60,8 @@ get-tomljson:
     FROM alpine:3.18.3
     ARG USERARCH
     ARG version=2.1.0
-    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz; \
-        tar -xf tomljson.tar.xz; \
+    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz && \
+        tar -xf tomljson.tar.xz && \
         chmod +x tomljson
     SAVE ARTIFACT tomljson
 
@@ -70,7 +70,7 @@ get-jq:
     FROM alpine:3.18.3
     ARG USERARCH
     ARG version=1.7
-    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH}; \
+    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH} && \
         chmod +x jq
     SAVE ARTIFACT jq
 
