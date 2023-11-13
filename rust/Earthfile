@@ -1,54 +1,130 @@
-VERSION 0.7
+VERSION --global-cache 0.7
+
+# INIT stores the configuration required for the other UDCs in the filesystem, and installs required dependencies.
+#   - cache_id: Overrides default ID of the global $CARGO_HOME cache. Its value is exported to the build environment under the entry: $CARGO_HOME_CACHE_ID
+#   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
+#   - sweep_days (4): +CARGO calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
+INIT:
+    COMMAND
+    DO +INSTALL_CARGO_SWEEP
+    RUN mkdir -p /earthly/cfg
+
+    # cache_id
+    ARG EARTHLY_TARGET_PROJECT_NO_TAG
+    ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
+    ARG cache_id="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache"
+    RUN echo "$cache_id">/earthly/cfg/cache_id
+    ENV CARGO_HOME_CACHE_ID=$cache_id
+
+    #keep_fingerprints
+    ARG keep_fingerprints=false
+    RUN echo "$keep_fingerprints">/earthly/cfg/keep_fingerprints
+
+    #sweep_days
+    ARG sweep_days=4
+    RUN echo "$sweep_days">/earthly/cfg/sweep_days
 
 # CARGO runs the cargo command "cargo $args".
-# This UDC should be thread safe. Parallel builds of targets using it should be free of race conditions.
+# This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
 # Arguments:
-#   - args: Cargo subcommand and its arguments. Required
-#   - keep_fingerprints (false): Do not remove source packages fingerprints. Use only when source packages have been COPYed with --keep-ts option
+#   - args: Cargo subcommand and its arguments. Required.
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
-#     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension
+#     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
     COMMAND
     ARG --required args
-    ARG keep_fingerprints=false
+    ARG keep_fingerprints=$(cat /earthly/cfg/keep_fingerprints)
+    ARG sweep_days=$(cat /earthly/cfg/sweep_days)
     ARG output
     IF [ "$keep_fingerprints" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
-    RUN --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/registry \
-        --mount=type=cache,mode=0777,sharing=shared,target=$CARGO_HOME/git \
-        --mount=type=cache,mode=0777,target=target \
-        cargo $args; \
-        if [ -n "$output" ]; then \
-          mkdir /earthly_lib_rust_temp; \
-          cd target; \
-          find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents \{\} /earthly_lib_rust_temp \; ; \
-        fi
+    DO +RUN_WITH_CACHE --command="set -e;
+        echo \"Running cargo $args\" ;
+        cargo $args;
+        if [ -n \"$output\" ]; then
+          echo \"Copying output files\" ;
+          mkdir -p /earthly_lib_rust_temp;
+          cd target;
+          find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} /earthly_lib_rust_temp \; ;
+          cd ..;
+        fi;
+        echo \"Running cargo sweep -r -t $sweep_days\" ;
+        cargo sweep -r -t $sweep_days;
+        echo \"Running cargo sweep -r -i\" ;
+        cargo sweep -r -i;"
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
     END
 
+INSTALL_CARGO_SWEEP:
+    COMMAND
+    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
+          echo "Installing cargo sweep" ; \
+          cargo install cargo-sweep --root $CARGO_HOME; \
+        fi;
+
 # REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
-# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts)
+# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts).
 REMOVE_SOURCE_FINGERPRINTS:
     COMMAND
-    COPY +get-stoml/stoml /tmp/stoml
-    ARG source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/stoml {} package.name; printf "\n"' \\;)
-    RUN --mount=type=cache,mode=0777,sharing=shared,target=target \
-      find target -name .fingerprint; \
-      fingerprint_folders=$(find target -name .fingerprint) ; \
-      for fingerprint_folder in $fingerprint_folders; do \
-        cd $fingerprint_folder; \
-        for source_lib in $source_libs; do \
-          find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec rm -rf {} \; ;\
-        done \
-      done
+    COPY +get-tomljson/tomljson /tmp/tomljson
+    COPY +get-jq/jq /tmp/jq
+    DO +RUN_WITH_CACHE --command="set -e;
+        source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
+        fingerprint_folders=\$(find target -name .fingerprint) ;
+        echo \"deleting fingerprints:\";
+        for fingerprint_folder in \$fingerprint_folders; do
+          cd \$fingerprint_folder;
+          for source_lib in \$source_libs; do
+            find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
+          done
+        done"
 
-# get-stoml gets the portable stoml binary
-get-stoml:
+# get-tomljson gets the portable tomljson binary.
+get-tomljson:
     FROM alpine:3.18.3
-    RUN wget -O stoml https://github.com/freshautomations/stoml/releases/download/v0.7.1/stoml_linux_amd64; \
-       chmod +x stoml
-    SAVE ARTIFACT ./stoml stoml
+    ARG USERARCH
+    ARG version=2.1.0
+    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz; \
+        tar -xf tomljson.tar.xz; \
+        chmod +x tomljson
+    SAVE ARTIFACT tomljson
+
+# get-jq gets the portable jq binary.
+get-jq:
+    FROM alpine:3.18.3
+    ARG USERARCH
+    ARG version=1.7
+    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH}; \
+        chmod +x jq
+    SAVE ARTIFACT jq
+
+# RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
+# Arguments:
+#   - command (required): Command to run, can be any expression.
+#
+# This implementation is not expected to change significantly. Prefer using the `CARGO` UDC if you can, so you can get future improvements transparently.
+RUN_WITH_CACHE:
+    COMMAND
+    ARG --required command
+    ARG cache_id = $(cat /earthly/cfg/cache_id)
+    # Save to restore at the end.
+    ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
+    ARG ORIGINAL_CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT
+    # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
+    # This way, if BK garbage-collects them, the build is not broken.
+    ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
+    # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
+    # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
+    ENV CARGO_HOME="/earthly/.cargo"
+    RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=/$CARGO_HOME \
+        --mount=type=cache,mode=0777,target=target \
+        set -e; \
+        mkdir -p $CARGO_HOME; \
+        printf "Running:\n      $command\n"; \
+        eval $command
+    ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
+    ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_INSTALL_ROOT
