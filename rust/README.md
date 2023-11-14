@@ -34,7 +34,7 @@ By default, this UDC removes the fingerprints of the packages found in the sourc
 
 ## +CARGO
 
-This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME/registry`, `$CARGO_HOME/git` and `target` for future builds of the same calling target. 
+This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME` and `target` for future builds of the same calling target. 
 
 ### Usage
 
