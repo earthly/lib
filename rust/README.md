@@ -4,7 +4,7 @@ Earthly's official collection of rust [UDCs](https://docs.earthly.dev/docs/guide
 
 First, import the UDC up in your Earthfile:
 ```earthfile
-VERSION 0.7
+VERSION --global-cache 0.7
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
 
