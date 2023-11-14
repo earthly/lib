@@ -79,7 +79,7 @@ Show `$CARGO_HOME` cached-entries size:
     DO rust-udc+RUN_WITH_CACHE --command "du \$CARGO_HOME"
 ```
 
-## Examples
+## Complete example
 
 Suppose the following project:
 ```
@@ -101,14 +101,13 @@ Suppose the following project:
 The Earthfile would look like:
 
 ```earthfile
-VERSION 0.7
-ARG --global debian=bookworm
+VERSION --global-cache 0.7
 
 # Importing UDC definition from default branch (in a real case, specify version or commit to guarantee immutability)
 IMPORT github.com/earthly/lib/rust AS rust
 
 install:
-  FROM rust:1.73.0-$debian
+  FROM rust:1.73.0-bookworm
   RUN apt-get update -qq
   RUN apt-get install --no-install-recommends -qq autoconf autotools-dev libtool-bin clang cmake bsdmainutils
   RUN cargo install --locked cargo-deny
