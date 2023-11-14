@@ -75,7 +75,7 @@ Command to run, can be any expression. For example:
     DO rust-udc+RUN_WITH_CACHE --command "du \$CARGO_HOME"
 ```
 
-## Examples:
+## Examples
 
 Suppose the following project:
 ```
