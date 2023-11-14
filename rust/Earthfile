@@ -84,7 +84,7 @@ RUN_WITH_CACHE:
     # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
     ENV CARGO_HOME="/earthly/.cargo"
-    RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=/$CARGO_HOME \
+    RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=$CARGO_HOME \
         --mount=type=cache,mode=0777,target=target \
         set -e; \
         mkdir -p $CARGO_HOME; \
