@@ -70,7 +70,10 @@ Notice that in order to run this UDC, [+INIT](#init) must be called first.
 
 ### Arguments
 #### `command (required)` 
-Command to run, can be any expression. For example:
+Command to run, can be any expression.
+
+### Example
+Show `$CARGO_HOME` cached-entries size:
 
 ```earthfile
     DO rust-udc+RUN_WITH_CACHE --command "du \$CARGO_HOME"
