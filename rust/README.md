@@ -12,7 +12,7 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 
 This UDC stores the configuration required by the other UDCs in the build environment filesystem, and installs required dependencies.
 
-It is meant to be called once per build environment, to avoid passing repetitive arguments to the UDCs called after it, and to install required dependencies before the source files are copied from the build context.  
+It must be called once per build environment, to avoid passing repetitive arguments to the UDCs called after it, and to install required dependencies before the source files are copied from the build context.  
 
 ### Usage
 

@@ -6,6 +6,10 @@ VERSION --global-cache 0.7
 #   - sweep_days (4): +CARGO calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
     COMMAND
+    RUN if [ -f /earthly/cfg/cache_id ]; then \
+      echo "+INIT has already been called in this build environment" ; \
+      exit 1; \
+    fi
     DO +INSTALL_CARGO_SWEEP
     RUN mkdir -p /earthly/cfg
 
@@ -24,6 +28,13 @@ INIT:
     ARG sweep_days=4
     RUN echo "$sweep_days">/earthly/cfg/sweep_days
 
+CHECK_INITED:
+    COMMAND
+    RUN if [ ! -f /earthly/cfg/cache_id ]; then \
+          echo "+INIT has not been called yet in this build environment" ; \
+          exit 1; \
+        fi;
+
 # CARGO runs the cargo command "cargo $args".
 # This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
 # Arguments:
@@ -33,6 +44,7 @@ INIT:
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
     COMMAND
+    DO +CHECK_INITED
     ARG --required args
     ARG keep_fingerprints=$(cat /earthly/cfg/keep_fingerprints)
     ARG sweep_days=$(cat /earthly/cfg/sweep_days)
@@ -59,50 +71,6 @@ CARGO:
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
     END
 
-# REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
-# This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts).
-REMOVE_SOURCE_FINGERPRINTS:
-    COMMAND
-    COPY +get-tomljson/tomljson /tmp/tomljson
-    COPY +get-jq/jq /tmp/jq
-    DO +RUN_WITH_CACHE --command="set -e;
-        source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
-        fingerprint_folders=\$(find target -name .fingerprint) ;
-        echo \"deleting fingerprints:\";
-        for fingerprint_folder in \$fingerprint_folders; do
-          cd \$fingerprint_folder;
-          for source_lib in \$source_libs; do
-            find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
-          done
-        done"
-
-# get-tomljson gets the portable tomljson binary.
-get-tomljson:
-    FROM alpine:3.18.3
-    ARG USERARCH
-    ARG version=2.1.0
-    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz; \
-        tar -xf tomljson.tar.xz; \
-        chmod +x tomljson
-    SAVE ARTIFACT tomljson
-
-# get-jq gets the portable jq binary.
-get-jq:
-    FROM alpine:3.18.3
-    ARG USERARCH
-    ARG version=1.7
-    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH}; \
-        chmod +x jq
-    SAVE ARTIFACT jq
-
-# INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already.
-INSTALL_CARGO_SWEEP:
-    COMMAND
-    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
-          echo "Installing cargo sweep" ; \
-          cargo install cargo-sweep --root $CARGO_HOME; \
-        fi;
-
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
@@ -110,6 +78,7 @@ INSTALL_CARGO_SWEEP:
 # This implementation is not expected to change significantly. Prefer using the `CARGO` UDC if you can, so you can get future improvements transparently.
 RUN_WITH_CACHE:
     COMMAND
+    DO +CHECK_INITED
     ARG --required command
     ARG cache_id = $(cat /earthly/cfg/cache_id)
     # Save to restore at the end.
@@ -129,3 +98,43 @@ RUN_WITH_CACHE:
         eval $command
     ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_INSTALL_ROOT
+
+get-tomljson:
+    FROM alpine:3.18.3
+    ARG USERARCH
+    ARG version=2.1.0
+    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz && \
+        tar -xf tomljson.tar.xz; \
+        chmod +x tomljson
+    SAVE ARTIFACT tomljson
+
+get-jq:
+    FROM alpine:3.18.3
+    ARG USERARCH
+    ARG version=1.7
+    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH} && \
+        chmod +x jq
+    SAVE ARTIFACT jq
+
+INSTALL_CARGO_SWEEP:
+    COMMAND
+    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
+          echo "Installing cargo sweep" ; \
+          cargo install cargo-sweep --root $CARGO_HOME; \
+        fi;
+
+REMOVE_SOURCE_FINGERPRINTS:
+    COMMAND
+    DO +CHECK_INITED
+    COPY +get-tomljson/tomljson /tmp/tomljson
+    COPY +get-jq/jq /tmp/jq
+    DO +RUN_WITH_CACHE --command="set -e;
+        source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
+        fingerprint_folders=\$(find target -name .fingerprint) ;
+        echo \"deleting fingerprints:\";
+        for fingerprint_folder in \$fingerprint_folders; do
+          cd \$fingerprint_folder;
+          for source_lib in \$source_libs; do
+            find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
+          done
+        done"
