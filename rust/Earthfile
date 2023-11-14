@@ -28,15 +28,9 @@ INIT:
     ARG sweep_days=4
     RUN echo "$sweep_days">/earthly/cfg/sweep_days
 
-CHECK_INITED:
-    COMMAND
-    RUN if [ ! -f /earthly/cfg/cache_id ]; then \
-          echo "+INIT has not been called yet in this build environment" ; \
-          exit 1; \
-        fi;
-
 # CARGO runs the cargo command "cargo $args".
 # This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
+# Notice that in order to run this UDC, +INIT must be called first.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required.
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
@@ -72,10 +66,10 @@ CARGO:
     END
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
+# Notice that in order to run this UDC, +INIT must be called first.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
 #
-# This implementation is not expected to change significantly. Prefer using the `CARGO` UDC if you can, so you can get future improvements transparently.
 RUN_WITH_CACHE:
     COMMAND
     DO +CHECK_INITED
@@ -138,3 +132,10 @@ REMOVE_SOURCE_FINGERPRINTS:
             find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
           done
         done"
+
+CHECK_INITED:
+    COMMAND
+    RUN if [ ! -f /earthly/cfg/cache_id ]; then \
+          echo "+INIT has not been called yet in this build environment" ; \
+          exit 1; \
+        fi;

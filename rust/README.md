@@ -37,6 +37,8 @@ By default, this UDC removes the fingerprints of the packages found in the sourc
 
 This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME` and `target` for future builds of the same calling target. 
 
+Notice that in order to run this UDC, [+INIT](#init) must be called first.
+
 ### Usage
 
 After calling `+INIT`, use it to wrap cargo commands:
