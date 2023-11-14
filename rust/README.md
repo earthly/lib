@@ -9,8 +9,9 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 
 ## +INIT
 
-This UDC stores the configuration required for the other UDCs in the filesystem, and installs required dependencies. 
-It is meant to be called once per build environment, with the goal of avoiding passing repetitive arguments following UDCs called after it, and to install required dependencies before the source files are copied from the build context.  
+This UDC stores the configuration required by the other UDCs in the build environment filesystem, and installs required dependencies.
+
+It is meant to be called once per build environment, to avoid passing repetitive arguments to the following UDCs called after it, and to install required dependencies before the source files are copied from the build context.  
 
 ### Usage
 
