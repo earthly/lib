@@ -59,13 +59,6 @@ CARGO:
           mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
     END
 
-INSTALL_CARGO_SWEEP:
-    COMMAND
-    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
-          echo "Installing cargo sweep" ; \
-          cargo install cargo-sweep --root $CARGO_HOME; \
-        fi;
-
 # REMOVE_SOURCE_FINGERPRINTS removes the Cargo fingerprint folders of the source packages.
 # This guarantees Cargo compiles the packages when COPY commands of the source folders have a static timestamp (see --keep-ts).
 REMOVE_SOURCE_FINGERPRINTS:
@@ -101,6 +94,14 @@ get-jq:
     RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH}; \
         chmod +x jq
     SAVE ARTIFACT jq
+
+# INSTALL_CARGO_SWEEP installs cargo-sweep if it doesn't exist already.
+INSTALL_CARGO_SWEEP:
+    COMMAND
+    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
+          echo "Installing cargo sweep" ; \
+          cargo install cargo-sweep --root $CARGO_HOME; \
+        fi;
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
 # Arguments:
