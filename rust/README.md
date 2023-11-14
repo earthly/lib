@@ -93,14 +93,15 @@ install:
   RUN cargo install --locked cargo-deny
   RUN rustup component add clippy
   RUN rustup component add rustfmt
-  # Call +INIT before copying the source file to avoid installing depencies every time source code changes
-  DO rust+INIT
+  # Call +INIT before copying the source file to avoid installing depencies every time source code changes. 
+  # This parametrization will be used in future calls to UDCs of the library
+  DO rust+INIT --keep_fingerprints=true
 
 source:
   FROM +install
   COPY --keep-ts Cargo.toml Cargo.lock ./
   COPY --keep-ts deny.toml ./
-  COPY --dir package1 package2  ./
+  COPY --keep-ts --dir package1 package2  ./
 
 # build builds with the Cargo release profile
 build:
