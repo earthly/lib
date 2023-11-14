@@ -1,0 +1,6 @@
+VERSION 0.7
+
+test:
+    BUILD ./dind+test
+    BUILD ./git+test
+    BUILD ./ssh+test

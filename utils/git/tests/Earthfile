@@ -1,0 +1,48 @@
+VERSION --arg-scope-and-set --pass-args 0.7
+
+PROJECT earthly-technologies/core
+
+all:
+    BUILD --platform=linux/amd64 --platform=linux/arm64 +test-deep-clone-image \
+        --base_image=alpine/git:latest \
+        --base_image=alpine:latest \
+        --base_image=debian:stable \
+        --base_image=debian:stable-slim \
+        --base_image=ubuntu:latest \
+        --base_image=amazonlinux:1 \
+        --base_image=amazonlinux:2 \
+        --GIT_URL=https://github.com/earthly/hello-world.git \
+        --GIT_URL=git@github.com:earthly/hello-world.git \
+        --GIT_URL=git@github.com:earthly/hello-world \
+        --SECRET_PATH="" \
+        --SECRET_PATH="littleredcorvette-id_rsa" \
+        --DEST_DIR="" \
+        --DEST_DIR="some-other-dir"
+
+test-deep-clone-image:
+    ARG --required base_image
+    ARG TARGETPLATFORM
+    FROM alpine
+    IF [ "$base_image" = "amazonlinux:1" ] && [ "$TARGETPLATFORM" = "linux/arm64" ] # no amazonlinux:1 for arm64, skipping
+        RUN echo skipping $base_image with platform $TARGETPLATFORM
+    ELSE
+        FROM "$base_image"
+        LET use_git_env="true"
+        IF [ "${base_image%:*}" = "alpine/git" ]
+            SET use_git_env="false"
+            RUN apk add git
+        ELSE IF [ "${base_image%:*}" = "alpine" ]
+            RUN apk add git
+        ELSE IF [ "${base_image%:*}" = "debian" ]
+            RUN apt update && apt install -y git
+        ELSE IF [ "${base_image%:*}" = "ubuntu" ]
+            RUN apt-get update && apt-get -y install git
+        ELSE IF [[ $base_image == amazonlinux* ]]
+            RUN yum -y install git
+        END
+        DO --pass-args ..+DEEP_CLONE --USE_GIT_ENV=$use_git_env
+        IF [ -n $DEST_DIR ]
+            WORKDIR $DEST_DIR
+        END
+        RUN git checkout main
+    END
