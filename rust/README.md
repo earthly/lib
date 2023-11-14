@@ -65,7 +65,7 @@ This UDC is thread safe. Parallel builds of targets calling this UDC should be f
 
 `+RUN_WITH_CACHE` runs the passed command with the CARGO caches mounted.
 
-Notice that in order to run this UDC, +INIT must be called first.
+Notice that in order to run this UDC, [+INIT](#init) must be called first.
 
 ### Arguments
 #### `command (required)` 
