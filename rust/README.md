@@ -61,6 +61,20 @@ For example `--output="release/[^\./]+"` would keep all the files in `/target/re
 ### Thread safety
 This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
 
+## +RUN_WITH_CACHE
+
+`+RUN_WITH_CACHE` runs the passed command with the CARGO caches mounted.
+
+Notice that in order to run this UDC, +INIT must be called first.
+
+### Arguments
+#### `command (required)` 
+Command to run, can be any expression. For example:
+
+```earthfile
+    DO rust-udc+RUN_WITH_CACHE --command "du \$CARGO_HOME"
+```
+
 ## Examples:
 
 Suppose the following project:
