@@ -57,7 +57,7 @@ Use this argument when you want to `SAVE ARTIFACT` from the target folder (mount
 For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension.
 
 ### Thread safety
-This UDC should is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
+This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
 
 ## Examples:
 
