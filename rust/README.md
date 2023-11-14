@@ -7,7 +7,7 @@ First, import the UDC up in your Earthfile:
 VERSION --global-cache 0.7
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
-> :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490) `-global-cache` is required.
+> :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.
 
 ## +INIT
 
