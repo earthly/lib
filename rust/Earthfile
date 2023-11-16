@@ -49,6 +49,7 @@ CARGO:
     ARG keep_fingerprints=$(cat /tmp/earthly/cfg/keep_fingerprints)
     ARG sweep_days=$(cat /tmp/earthly/cfg/sweep_days)
     ARG output
+    ARG TMP_FOLDER="/tmp/earthly/lib/rust"
     IF [ "$keep_fingerprints" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
@@ -57,9 +58,9 @@ CARGO:
         cargo $args;
         if [ -n \"$output\" ]; then
           echo \"Copying output files\" ;
-          mkdir -p /earthly_lib_rust_temp;
+          mkdir -p $TMP_FOLDER;
           cd target;
-          find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} /earthly_lib_rust_temp \; ;
+          find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} $TMP_FOLDER \; ;
           cd ..;
         fi;
         echo \"Running cargo sweep -r -t $sweep_days\" ;
@@ -68,7 +69,7 @@ CARGO:
         cargo sweep -r -i;"
     IF [ "$output" != "" ]
       RUN mkdir -p target; \
-          mv /earthly_lib_rust_temp/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
+          mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
     END
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
@@ -89,7 +90,7 @@ RUN_WITH_CACHE:
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
     # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
-    ENV CARGO_HOME="/earthly/.cargo"
+    ENV CARGO_HOME="/tmp/earthly/.cargo"
     RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=$CARGO_HOME \
         --mount=type=cache,mode=0777,target=target \
         set -e; \
