@@ -10,6 +10,9 @@ INIT:
       echo "+INIT has already been called in this build environment" ; \
       exit 1; \
     fi
+    IF [ "$CARGO_HOME" = "" ]
+        ENV CARGO_HOME="$HOME/.cargo"
+    END
     DO +INSTALL_CARGO_SWEEP
     RUN mkdir -p /earthly/cfg
 
