@@ -6,7 +6,7 @@ VERSION --global-cache 0.7
 #   - sweep_days (4): +CARGO calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
     COMMAND
-    RUN if [ -f /earthly/cfg/cache_id ]; then \
+    RUN if [ -f /tmp/earthly/cfg/cache_id ]; then \
       echo "+INIT has already been called in this build environment" ; \
       exit 1; \
     fi
@@ -14,22 +14,22 @@ INIT:
         ENV CARGO_HOME="$HOME/.cargo"
     END
     DO +INSTALL_CARGO_SWEEP
-    RUN mkdir -p /earthly/cfg
+    RUN mkdir -p /tmp/earthly/cfg
 
     # cache_id
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
     ARG cache_id="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache"
-    RUN echo "$cache_id">/earthly/cfg/cache_id
+    RUN echo "$cache_id">/tmp/earthly/cfg/cache_id
     ENV CARGO_HOME_CACHE_ID=$cache_id
 
     #keep_fingerprints
     ARG keep_fingerprints=false
-    RUN echo "$keep_fingerprints">/earthly/cfg/keep_fingerprints
+    RUN echo "$keep_fingerprints">/tmp/earthly/cfg/keep_fingerprints
 
     #sweep_days
     ARG sweep_days=4
-    RUN echo "$sweep_days">/earthly/cfg/sweep_days
+    RUN echo "$sweep_days">/tmp/earthly/cfg/sweep_days
 
 # CARGO runs the cargo command "cargo $args".
 # This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
@@ -43,8 +43,8 @@ CARGO:
     COMMAND
     DO +CHECK_INITED
     ARG --required args
-    ARG keep_fingerprints=$(cat /earthly/cfg/keep_fingerprints)
-    ARG sweep_days=$(cat /earthly/cfg/sweep_days)
+    ARG keep_fingerprints=$(cat /tmp/earthly/cfg/keep_fingerprints)
+    ARG sweep_days=$(cat /tmp/earthly/cfg/sweep_days)
     ARG output
     IF [ "$keep_fingerprints" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
@@ -77,7 +77,7 @@ RUN_WITH_CACHE:
     COMMAND
     DO +CHECK_INITED
     ARG --required command
-    ARG cache_id = $(cat /earthly/cfg/cache_id)
+    ARG cache_id = $(cat /tmp/earthly/cfg/cache_id)
     # Save to restore at the end.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
     ARG ORIGINAL_CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT
@@ -138,7 +138,7 @@ REMOVE_SOURCE_FINGERPRINTS:
 
 CHECK_INITED:
     COMMAND
-    RUN if [ ! -f /earthly/cfg/cache_id ]; then \
+    RUN if [ ! -f /tmp/earthly/cfg/cache_id ]; then \
           echo "+INIT has not been called yet in this build environment" ; \
           exit 1; \
         fi;
