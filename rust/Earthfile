@@ -13,6 +13,9 @@ INIT:
     IF [ "$CARGO_HOME" = "" ]
         ENV CARGO_HOME="$HOME/.cargo"
     END
+    IF ! echo "$PATH" | grep -q "$CARGO_HOME/bin"
+        ENV PATH="$PATH:$CARGO_HOME/bin"
+    END
     DO +INSTALL_CARGO_SWEEP
     RUN mkdir -p /tmp/earthly/cfg
 
