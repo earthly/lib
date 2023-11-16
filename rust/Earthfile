@@ -3,7 +3,7 @@ VERSION --global-cache 0.7
 # INIT stores the configuration required for the other UDCs in the filesystem, and installs required dependencies.
 #   - cache_id: Overrides default ID of the global $CARGO_HOME cache. Its value is exported to the build environment under the entry: $CARGO_HOME_CACHE_ID
 #   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
-#   - sweep_days (4): +CARGO calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
+#   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
     COMMAND
     RUN if [ -f /tmp/earthly/cfg/cache_id ]; then \
