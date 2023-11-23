@@ -1,6 +1,6 @@
 # lib
 
-Earthly's official collection of [UDCs](https://docs.earthly.dev/docs/guides/udc).
+Earthly's official collection of [functions](https://docs.earthly.dev/docs/guides/functions).
 
 ## Contributing
 

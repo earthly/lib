@@ -1,8 +1,8 @@
 # lib/rust
 
-Earthly's official collection of rust [UDCs](https://docs.earthly.dev/docs/guides/udc).
+Earthly's official collection of Rust [functions](https://docs.earthly.dev/docs/guides/functions).
 
-First, import the UDC up in your Earthfile:
+First, import the library up in your Earthfile:
 ```earthfile
 VERSION --global-cache 0.7
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
@@ -11,9 +11,9 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 
 ## +INIT
 
-This UDC stores the configuration required by the other UDCs in the build environment filesystem, and installs required dependencies.
+This function stores the configuration required by the other functions in the build environment filesystem, and installs required dependencies.
 
-It must be called once per build environment, to avoid passing repetitive arguments to the UDCs called after it, and to install required dependencies before the source files are copied from the build context.  
+It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.  
 
 ### Usage
 
@@ -29,16 +29,16 @@ Overrides default ID of the global `$CARGO_HOME` cache. Its value is exported to
 #### `keep_fingerprints (false)`
 Instructs the following `+CARGO` calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with `--keep-ts `option.
 Cargo caches compilations of packages in `target` folder based on their last modification timestamps.
-By default, this UDC removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
+By default, this function removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
 
 #### `sweep_days (4)`
 `+CARGO` calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 
 ## +CARGO
 
-This UDC runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME` and `target` for future builds of the same calling target. 
+This function runs the cargo command `cargo $args` caching the contents of `$CARGO_HOME` and `target` for future builds of the same calling target. 
 
-Notice that in order to run this UDC, [+INIT](#init) must be called first.
+Notice that in order to run this function, [+INIT](#init) must be called first.
 
 ### Usage
 
@@ -60,13 +60,13 @@ Use this argument when you want to `SAVE ARTIFACT` from the target folder (mount
 For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension.
 
 ### Thread safety
-This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
+This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
 
 ## +RUN_WITH_CACHE
 
 `+RUN_WITH_CACHE` runs the passed command with the CARGO caches mounted.
 
-Notice that in order to run this UDC, [+INIT](#init) must be called first.
+Notice that in order to run this function, [+INIT](#init) must be called first.
 
 ### Arguments
 #### `command (required)` 
@@ -103,7 +103,7 @@ The Earthfile would look like:
 ```earthfile
 VERSION --global-cache 0.7
 
-# Importing UDC definition from default branch (in a real case, specify version or commit to guarantee immutability)
+# Imports the library definition from default branch (in a real case, specify version or commit to guarantee immutability)
 IMPORT github.com/earthly/lib/rust AS rust
 
 install:
@@ -114,7 +114,7 @@ install:
   RUN rustup component add clippy
   RUN rustup component add rustfmt
   # Call +INIT before copying the source file to avoid installing depencies every time source code changes. 
-  # This parametrization will be used in future calls to UDCs of the library
+  # This parametrization will be used in future calls to functions of the library
   DO rust+INIT --keep_fingerprints=true
 
 source:

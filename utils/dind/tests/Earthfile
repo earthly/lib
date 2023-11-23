@@ -17,7 +17,7 @@ test-install-dind-for-image:
     ARG --required base_image
     FROM alpine
     ARG TARGETPLATFORM
-    IF [ "${base_image%:*}" = "amazonlinux" ] && [ "$TARGETPLATFORM" = "linux/arm64" ] # no amazonlinux:1 for arm64/UDC not supported atm for amazonlinux:2 on arm - skipping
+    IF [ "${base_image%:*}" = "amazonlinux" ] && [ "$TARGETPLATFORM" = "linux/arm64" ] # no amazonlinux:1 for arm64/function not supported atm for amazonlinux:2 on arm - skipping
         RUN echo skipping $base_image with platform $TARGETPLATFORM
     ELSE
         FROM "$base_image"

@@ -1,6 +1,6 @@
 VERSION --global-cache 0.7
 
-# INIT stores the configuration required for the other UDCs in the filesystem, and installs required dependencies.
+# INIT installs some required dependencies and stores in the filesystem the configuration that will be available for the rest of functions.
 #   - cache_id: Overrides default ID of the global $CARGO_HOME cache. Its value is exported to the build environment under the entry: $CARGO_HOME_CACHE_ID
 #   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
 #   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
@@ -35,8 +35,8 @@ INIT:
     RUN echo "$sweep_days">/tmp/earthly/cfg/sweep_days
 
 # CARGO runs the cargo command "cargo $args".
-# This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
-# Notice that in order to run this UDC, +INIT must be called first.
+# This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
+# Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required.
 #   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
@@ -73,7 +73,7 @@ CARGO:
     END
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
-# Notice that in order to run this UDC, +INIT must be called first.
+# Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
 #
@@ -85,7 +85,7 @@ RUN_WITH_CACHE:
     # Save to restore at the end.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
     ARG ORIGINAL_CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT
-    # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
+    # Make sure that crates installed though this function are stored in the original cargo home, and not in the cargo home within the mount cache.
     # This way, if BK garbage-collects them, the build is not broken.
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
     # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
