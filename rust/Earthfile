@@ -80,6 +80,7 @@ CARGO:
 RUN_WITH_CACHE:
     COMMAND
     DO +CHECK_INITED
+    ARG EARTHLY_TARGET_NAME
     ARG --required command
     ARG cache_id = $(cat /tmp/earthly/cfg/cache_id)
     # Save to restore at the end.
@@ -92,7 +93,7 @@ RUN_WITH_CACHE:
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
     ENV CARGO_HOME="/tmp/earthly/.cargo"
     RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=$CARGO_HOME \
-        --mount=type=cache,mode=0777,target=target \
+        --mount=type=cache,mode=0777,id="${cache_id}#${EARTHLY_TARGET_NAME}",target=target \
         set -e; \
         mkdir -p $CARGO_HOME; \
         printf "Running:\n      $command\n"; \
