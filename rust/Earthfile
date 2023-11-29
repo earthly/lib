@@ -1,12 +1,12 @@
 VERSION --global-cache 0.7
 
-# INIT stores the configuration required for the other UDCs in the filesystem, and installs required dependencies.
-#   - cache_id: Overrides default ID of the global $CARGO_HOME cache. Its value is exported to the build environment under the entry: $CARGO_HOME_CACHE_ID
+# INIT stores the configuration required for the other functions in the filesystem, and installs required dependencies.
+#   - cache_id: Overrides default ID of the global $CARGO_HOME cache. Its value is exported to the build environment under the entry: $EARTHLY_CARGO_HOME_CACHE_ID
 #   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
 #   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
     COMMAND
-    RUN if [ -f /tmp/earthly/cfg/cache_id ]; then \
+    RUN if [ -n "$EARTHLY_CARGO_HOME_CACHE_ID" ]; then \
       echo "+INIT has already been called in this build environment" ; \
       exit 1; \
     fi
@@ -19,38 +19,34 @@ INIT:
     DO +INSTALL_CARGO_SWEEP
     RUN mkdir -p /tmp/earthly/cfg
 
-    # cache_id
+    # EARTHLY_CARGO_HOME_CACHE_ID
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
-    ARG cache_id="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache"
-    RUN echo "$cache_id">/tmp/earthly/cfg/cache_id
-    ENV CARGO_HOME_CACHE_ID=$cache_id
+    ENV EARTHLY_CARGO_HOME_CACHE_ID="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache"
 
-    #keep_fingerprints
+    # $EARTHLY_KEEP_FINGERPRINTS
     ARG keep_fingerprints=false
-    RUN echo "$keep_fingerprints">/tmp/earthly/cfg/keep_fingerprints
+    ENV EARTHLY_KEEP_FINGERPRINTS=$keep_fingerprints
 
-    #sweep_days
+    # $EARTHLY_SWEEP_DAYS
     ARG sweep_days=4
-    RUN echo "$sweep_days">/tmp/earthly/cfg/sweep_days
+    ENV EARTHLY_SWEEP_DAYS=$sweep_days
 
 # CARGO runs the cargo command "cargo $args".
-# This UDC is thread safe. Parallel builds of targets calling this UDC should be free of race conditions.
-# Notice that in order to run this UDC, +INIT must be called first.
+# This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
+# Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required.
-#   - output: Regex to match the files within the target folder to be copied from the cache to the caller filesystem (image layers).
+#   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers).
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
     COMMAND
     DO +CHECK_INITED
     ARG --required args
-    ARG keep_fingerprints=$(cat /tmp/earthly/cfg/keep_fingerprints)
-    ARG sweep_days=$(cat /tmp/earthly/cfg/sweep_days)
     ARG output
     ARG TMP_FOLDER="/tmp/earthly/lib/rust"
-    IF [ "$keep_fingerprints" = "false" ]
+    IF [ "$EARTHLY_KEEP_FINGERPRINTS" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
     DO +RUN_WITH_CACHE --command="set -e;
@@ -63,8 +59,8 @@ CARGO:
           find . -type f -regextype posix-egrep -regex \"./$output\" -exec cp --parents \{\} $TMP_FOLDER \; ;
           cd ..;
         fi;
-        echo \"Running cargo sweep -r -t $sweep_days\" ;
-        cargo sweep -r -t $sweep_days;
+        echo \"Running cargo sweep -r -t $EARTHLY_SWEEP_DAYS\" ;
+        cargo sweep -r -t $EARTHLY_SWEEP_DAYS;
         echo \"Running cargo sweep -r -i\" ;
         cargo sweep -r -i;"
     IF [ "$output" != "" ]
@@ -73,33 +69,37 @@ CARGO:
     END
 
 # RUN_WITH_CACHE runs the passed command with the CARGO caches mounted.
-# Notice that in order to run this UDC, +INIT must be called first.
+# Notice that in order to run this function, +INIT must be called first. This function exports the target cache mount ID under the env entry: $TARGET_CACHE_ID.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
+#   - cargo_home_cache_id: ID of the cargo home cache mount. By default: $CARGO_HOME_CACHE_ID as exported by +INIT
+#   - target_cache_id: ID of the target cache mount. By default: ${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}
 #
 RUN_WITH_CACHE:
     COMMAND
     DO +CHECK_INITED
-    ARG EARTHLY_TARGET_NAME
     ARG --required command
-    ARG cache_id = $(cat /tmp/earthly/cfg/cache_id)
+    ARG EARTHLY_TARGET_NAME
+    ARG cargo_home_cache_id = $CARGO_HOME_CACHE_ID
+    ARG target_cache_id="${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
     # Save to restore at the end.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
     ARG ORIGINAL_CARGO_INSTALL_ROOT=$CARGO_INSTALL_ROOT
-    # Make sure that crates installed though this UDC are stored in the original cargo home, and not in the cargo home within the mount cache.
+    # Make sure that crates installed through this function are stored in the original cargo home, and not in the cargo home within the mount cache.
     # This way, if BK garbage-collects them, the build is not broken.
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_HOME
     # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
     ENV CARGO_HOME="/tmp/earthly/.cargo"
-    RUN --mount=type=cache,mode=0777,id=$cache_id,sharing=shared,target=$CARGO_HOME \
-        --mount=type=cache,mode=0777,id="${cache_id}#${EARTHLY_TARGET_NAME}",target=target \
+    RUN --mount=type=cache,mode=0777,id=$cargo_home_cache_id,sharing=shared,target=$CARGO_HOME \
+        --mount=type=cache,mode=0777,id=$target_cache_id,sharing=locked,target=target \
         set -e; \
         mkdir -p $CARGO_HOME; \
         printf "Running:\n      $command\n"; \
         eval $command
     ENV CARGO_HOME=$ORIGINAL_CARGO_HOME
     ENV CARGO_INSTALL_ROOT=$ORIGINAL_CARGO_INSTALL_ROOT
+    ENV TARGET_CACHE_ID=$target_cache_id
 
 get-tomljson:
     FROM alpine:3.18.3
@@ -143,7 +143,7 @@ REMOVE_SOURCE_FINGERPRINTS:
 
 CHECK_INITED:
     COMMAND
-    RUN if [ ! -f /tmp/earthly/cfg/cache_id ]; then \
+    RUN  if [ ! -n "$EARTHLY_CARGO_HOME_CACHE_ID" ]; then \
           echo "+INIT has not been called yet in this build environment" ; \
           exit 1; \
         fi;
