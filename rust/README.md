@@ -1,3 +1,5 @@
+> :fire: Checkout our [blog post](https://earthly.dev/blog/incremental-rust-builds/) about this library!
+
 # lib/rust
 
 Earthly's official collection of Rust [functions](https://docs.earthly.dev/docs/guides/functions).
