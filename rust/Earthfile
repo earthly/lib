@@ -72,8 +72,8 @@ CARGO:
 # Notice that in order to run this function, +INIT must be called first. This function exports the target cache mount ID under the env entry: $TARGET_CACHE_ID.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
-#   - cargo_home_cache_id: ID of the cargo home cache mount. By default: $CARGO_HOME_CACHE_ID as exported by +INIT
-#   - target_cache_id: ID of the target cache mount. By default: ${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}
+#   - EARTHLY_CARGO_HOME_CACHE_ID: ID of the cargo home cache mount. By default: $EARTHLY_CARGO_HOME_CACHE_ID as exported by +INIT
+#   - target_cache_id: ID of the target cache mount. By default: ${EARTHLY_CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}
 #   - with_docker: Runs the command within a WITH DOCKER element parametrized with this value
 #
 RUN_WITH_CACHE:
@@ -81,8 +81,8 @@ RUN_WITH_CACHE:
     DO +CHECK_INITED
     ARG --required command
     ARG EARTHLY_TARGET_NAME
-    ARG cargo_home_cache_id = $CARGO_HOME_CACHE_ID
-    ARG target_cache_id="${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
+    ARG EARTHLY_CARGO_HOME_CACHE_ID = $EARTHLY_CARGO_HOME_CACHE_ID
+    ARG target_cache_id="${EARTHLY_CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
     ARG with_docker
     # Save to restore at the end.
     ARG ORIGINAL_CARGO_HOME=$CARGO_HOME
@@ -95,7 +95,7 @@ RUN_WITH_CACHE:
     ENV CARGO_HOME="/tmp/earthly/.cargo"
     IF [ -n "$with_docker" ]
       WITH DOCKER $with_docker
-        RUN --mount=type=cache,mode=0777,id=$cargo_home_cache_id,sharing=shared,target=$CARGO_HOME \
+        RUN --mount=type=cache,mode=0777,id=$EARTHLY_CARGO_HOME_CACHE_ID,sharing=shared,target=$CARGO_HOME \
             --mount=type=cache,mode=0777,id=$target_cache_id,sharing=locked,target=target \
             set -e; \
             mkdir -p $CARGO_HOME; \
@@ -103,7 +103,7 @@ RUN_WITH_CACHE:
             eval $command
       END
     ELSE
-      RUN --mount=type=cache,mode=0777,id=$cargo_home_cache_id,sharing=shared,target=$CARGO_HOME \
+      RUN --mount=type=cache,mode=0777,id=$EARTHLY_CARGO_HOME_CACHE_ID,sharing=shared,target=$CARGO_HOME \
         --mount=type=cache,mode=0777,id=$target_cache_id,sharing=locked,target=target \
         set -e; \
         mkdir -p $CARGO_HOME; \

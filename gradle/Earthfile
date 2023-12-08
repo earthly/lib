@@ -1,0 +1,62 @@
+VERSION --global-cache 0.7
+
+# INIT stores the configuration required for the other functions in the filesystem, and installs required dependencies.
+#   - cache_id: Overrides default ID of the global cache. Its value is exported to the build environment under the entry: $EARTHLY_GRADLE_HOME_CACHE_ID
+INIT:
+    COMMAND
+    IF [ "$GRADLE_USER_HOME" = "" ]
+        ENV GRADLE_USER_HOME="$HOME/.gradle"
+    END
+    RUN if [ -n "$EARTHLY_GRADLE_HOME_CACHE_ID" ]; then \
+      echo "+INIT has already been called in this build environment" ; \
+      exit 1; \
+    fi
+    RUN mkdir -p /tmp/earthly/cfg
+
+    # EARTHLY_GRADLE_HOME_CACHE_ID
+    ARG EARTHLY_TARGET_PROJECT_NO_TAG
+    ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
+    ENV EARTHLY_GRADLE_HOME_CACHE_ID ="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-gradle-cache2"
+
+
+# RUN_WITH_CACHE runs the passed command with the gradle caches mounted.
+# Notice that in order to run this function, +INIT must be called first. This function exports the target cache mount ID under the env entry: $project_cache_id.
+# Arguments:
+#   - command (required): Command to run, can be any expression.
+#   - gradle_home_cache_id: ID of the gradle cache mount. By default: $EARTHLY_GRADLE_HOME_CACHE_ID as exported by +INIT
+#   - project_cache_id: ID of the target cache mount. By default: ${EARTHLY_GRADLE_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}
+#   - with_docker: Runs the command within a WITH DOCKER element parametrized with this value
+#
+RUN_WITH_CACHE:
+    COMMAND
+    DO +CHECK_INITED
+    ARG --required command
+    ARG EARTHLY_TARGET_NAME
+    ARG gradle_home_cache_id = $EARTHLY_GRADLE_HOME_CACHE_ID
+    ARG project_cache_id="${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
+    ARG with_docker
+    IF [ -n "$with_docker" ]
+      WITH DOCKER $with_docker
+        RUN --mount=type=cache,mode=0777,id=$gradle_home_cache_id,sharing=shared,target=$GRADLE_USER_HOME \
+            --mount=type=cache,mode=0777,id=$project_cache_id,sharing=locked,target=.gradle \
+            set -e; \
+            mkdir -p $GRADLE_USER_HOME; \
+            printf "Running:\n      $command\n"; \
+            eval $command
+      END
+    ELSE
+      RUN --mount=type=cache,mode=0777,id=$gradle_home_cache_id,sharing=shared,target=$GRADLE_USER_HOME \
+        --mount=type=cache,mode=0777,id=$project_cache_id,sharing=locked,target=.gradle \
+        set -e; \
+        mkdir -p $GRADLE_USER_HOME; \
+        printf "Running:\n      $command\n"; \
+        eval $command
+    END
+    ENV project_cache_id=$project_cache_id
+
+CHECK_INITED:
+    COMMAND
+    RUN  if [ ! -n "$EARTHLY_GRADLE_HOME_CACHE_ID" ]; then \
+          echo "+INIT has not been called yet in this build environment" ; \
+          exit 1; \
+        fi;
