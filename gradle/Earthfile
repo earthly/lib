@@ -12,8 +12,7 @@ VERSION --global-cache 0.7
 GRADLE_GET_MOUNT_CACHE:
     COMMAND
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
-    ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
-    ARG cache_prefix = "${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-gradle-cache"
+    ARG cache_prefix = "${EARTHLY_TARGET_PROJECT_NO_TAG}#earthly-gradle-cache"
     IF [ "$GRADLE_USER_HOME" = "" ]
         ENV GRADLE_USER_HOME="$HOME/.gradle"
     END
