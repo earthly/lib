@@ -5,7 +5,7 @@ Earthly's official collection of Gradle [functions](https://docs.earthly.dev/doc
 First, import the library up in your Earthfile:
 ```earthfile
 VERSION --global-cache 0.7
-IMPORT github.com/earthly/lib/gradle:<version/commit> AS rust
+IMPORT github.com/earthly/lib/gradle:<version/commit> AS gradle
 ```
 > :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.
 
