@@ -16,11 +16,10 @@ INIT:
     # EARTHLY_GRADLE_HOME_CACHE_ID
     ARG EARTHLY_TARGET_PROJECT_NO_TAG
     ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
-    ENV EARTHLY_GRADLE_HOME_CACHE_ID ="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-gradle-cache2"
-
+    ENV EARTHLY_GRADLE_HOME_CACHE_ID ="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-gradle-cache"
 
 # RUN_WITH_CACHE runs the passed command with the gradle caches mounted.
-# Notice that in order to run this function, +INIT must be called first. This function exports the target cache mount ID under the env entry: $project_cache_id.
+# Notice that in order to run this function, +INIT must be called first. This function exports the target cache mount ID under the env entry: $EARTHLY_GRADLE_PROJECT_CACHE_ID.
 # Arguments:
 #   - command (required): Command to run, can be any expression.
 #   - gradle_home_cache_id: ID of the gradle cache mount. By default: $EARTHLY_GRADLE_HOME_CACHE_ID as exported by +INIT
@@ -33,7 +32,7 @@ RUN_WITH_CACHE:
     ARG --required command
     ARG EARTHLY_TARGET_NAME
     ARG gradle_home_cache_id = $EARTHLY_GRADLE_HOME_CACHE_ID
-    ARG project_cache_id="${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
+    ARG project_cache_id="${EARTHLY_GRADLE_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}"
     ARG with_docker
     IF [ -n "$with_docker" ]
       WITH DOCKER $with_docker
@@ -52,7 +51,7 @@ RUN_WITH_CACHE:
         printf "Running:\n      $command\n"; \
         eval $command
     END
-    ENV project_cache_id=$project_cache_id
+    ENV EARTHLY_GRADLE_PROJECT_CACHE_ID=$project_cache_id
 
 CHECK_INITED:
     COMMAND
