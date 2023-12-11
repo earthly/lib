@@ -9,38 +9,20 @@ IMPORT github.com/earthly/lib/gradle:<version/commit> AS gradle
 ```
 > :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.
 
-## +INIT
+## +GRADLE_GET_MOUNT_CACHE
 
-This function stores the configuration required by the other functions in the build environment filesystem, and installs required dependencies.
+This function sets the following entries in the calling environment, so they can be used later on `RUN` commands
+- `$EARTHLY_GRADLE_USER_HOME_CACHE`: Code of the mount cache for the gradle home.
+- `$EARTHLY_GRADLE_PROJECT_CACHE`: Code of the mount cache for the .gradle folder.
 
-It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.
+### Arguments:
+- `cache_prefix`: To be used in both caches. By default: `${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-gradle-cache`
 
-### Usage
-
-Call once per build environment:
-```earthfile
-DO gradle+INIT ...
+### Example:
+```earthly
+DO gradle+GRADLE_GET_MOUNT_CACHE
+RUN --mount=$EARTHLY_GRADLE_USER_HOME_CACHE --mount=$EARTHLY_GRADLE_PROJECT_CACHE gradle --no-daemon build
 ```
-
-### Arguments
-#### `cache_id`
-Overrides default ID of the global `$GRADLE_USER_HOME` cache. Its value is exported to the build environment under the entry: `$EARTHLY_GRADLE_HOME_CACHE_ID`.
-
-## +RUN_WITH_CACHE
-
-`+RUN_WITH_CACHE` runs the passed command with the GRADLE caches mounted.
-
-Notice that in order to run this function, [+INIT](#init) must be called first. This function exports the target cache mount ID under the env entry: `$EARTHLY_GRADLE_PROJECT_CACHE_ID`.
-
-### Arguments
-#### `command (required)`
-Command to run, can be any expression.
-
-#### `gradle_home_cache_id`
-ID of the gradle home cache mount. By default: `$EARTHLY_GRADLE_HOME_CACHE_ID` as exported by `+INIT`
-
-#### `project_cache_id`
-ID of the target cache mount. By default: `${EARTHLY_GRADLE_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}`
 
 ## Example
 See [earthly-intellij-plugin](https://github.com/earthly/earthly-intellij-plugin/blob/main/Earthfile) for a complete example.
