@@ -19,16 +19,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: test
         run: |-
-          which git  && \
-          git status && \
-          git rev-parse --show-toplevel && \
-          git config --get remote.origin.url && \
-          git rev-parse HEAD && \
-          git rev-parse --short=8 HEAD && \
-          git rev-parse --abbrev-ref HEAD && \
-          git describe --exact-match" --tags && \
-          git log -1 --format=%at  && \
-          git log -1 --format=%ct  && \
-          git log -1 --format=%ae && \
-          git log -1 --format=%b && \
-          git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)'
+          which git
