@@ -19,4 +19,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: test
         run: |-
-          which git
+          which git  && \
+          git status
