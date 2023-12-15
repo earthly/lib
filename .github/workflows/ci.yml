@@ -26,8 +26,12 @@ jobs:
           git rev-parse HEAD && \
           git rev-parse --short=8 HEAD && \
           git rev-parse --abbrev-ref HEAD && \
+            echo "--format=%at" && \
           git log -1 --format=%at  && \
+          echo "--format=%ct" && \
           git log -1 --format=%ct  && \
+          echo "--format=%ae" && \
           git log -1 --format=%ae && \
+          echo "--format=%b" && \
           git log -1 --format=%b && \
           git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)'
