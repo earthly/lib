@@ -20,7 +20,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: test
         run: |-
-          which git ; \
+          /bin/sh -c "which git" ; \
           git status ; \
           git rev-parse --show-toplevel; \
           git config --get remote.origin.url; \
@@ -32,4 +32,4 @@ jobs:
           git log -1 --format=%ct ; \
           git log -1 --format=%ae; \
           git log -1 --format=%b; \
-          git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)'; \
+          git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)';
