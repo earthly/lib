@@ -26,7 +26,6 @@ jobs:
           git rev-parse HEAD && \
           git rev-parse --short=8 HEAD && \
           git rev-parse --abbrev-ref HEAD && \
-          git describe --exact-match --tags && \
           git log -1 --format=%at  && \
           git log -1 --format=%ct  && \
           git log -1 --format=%ae && \
