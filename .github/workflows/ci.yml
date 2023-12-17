@@ -34,4 +34,5 @@ jobs:
           git log -1 --format=%ae && \
           echo "--format=%b" && \
           git log -1 --format=%b && \
-          git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)'
+          git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)' && \
+          env
