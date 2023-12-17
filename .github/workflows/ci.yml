@@ -36,3 +36,4 @@ jobs:
           git log -1 --format=%b && \
           git for-each-ref --contains HEAD --format '%(refname:lstrip=-1)' && \
           env
+          hostname
