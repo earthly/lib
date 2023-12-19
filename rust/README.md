@@ -15,6 +15,8 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 
 This function sets some configuration in the environment (used by following functions), and installs required dependencies.
 It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.
+Note that this function changes `$CARGO_HOME` in the calling environment to point to a cache mount later on. 
+It is recommended then that all interaction with cargo is done throug the `+CARGO` function or using cache mounts returned by `+GET_RUST_CACHE_MOUNTS`.
 
 ### Usage
 
