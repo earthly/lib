@@ -71,7 +71,7 @@ CARGO:
 #   - EARTHLY_RUST_TARGET_CACHE: Code of the mount cache for the target folder.
 # Notice that in order to run this function, +INIT must be called first.
 # Example:
-#   DO gradle+RUST_GET_MOUNT_CACHE
+#   DO rust+RUST_GET_MOUNT_CACHE
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 GET_RUST_CACHE_MOUNTS:
     COMMAND
@@ -80,13 +80,15 @@ GET_RUST_CACHE_MOUNTS:
     ENV EARTHLY_RUST_CARGO_HOME_CACHE="type=cache,mode=0777,id=$EARTHLY_CACHE_PREFIX#cargo-home,sharing=shared,target=$CARGO_HOME"
     ENV EARTHLY_RUST_TARGET_CACHE="type=cache,mode=0777,id=${EARTHLY_CACHE_PREFIX}#target#${EARTHLY_TARGET_NAME},sharing=locked,target=target"
 
-# COPY_OUTPUT copies files out from the target cache to the image layers.
+# COPY_OUTPUT copies files out of the target cache into the image layers.
 # Use this function when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 # Notice that in order to run this function, +GET_RUST_CACHE_MOUNTS or +CARGO must be called first.
 # Arguments:
 #   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers).
 # Example:
-#   --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
+#   DO rust+RUST_GET_MOUNT_CACHE
+#   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
+#   DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 COPY_OUTPUT:
     COMMAND
     ARG --required output
