@@ -71,7 +71,7 @@ CARGO:
 #   - EARTHLY_RUST_TARGET_CACHE: Code of the mount cache for the target folder.
 # Notice that in order to run this function, +INIT must be called first.
 # Example:
-#   DO rust+RUST_GET_MOUNT_CACHE
+#   DO rust+SET_CACHE_MOUNTS_ENV
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 SET_CACHE_MOUNTS_ENV:
     COMMAND
