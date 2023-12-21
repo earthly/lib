@@ -13,9 +13,10 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 
 ## +INIT
 
-This function stores the configuration required by the other functions in the build environment filesystem, and installs required dependencies.
-
+This function sets some configuration in the environment (used by following functions), and installs required dependencies.
 It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.
+Note that this function changes `$CARGO_HOME` in the calling environment to point to a cache mount later on. 
+It is recommended then that all interaction with cargo is done throug the `+CARGO` function or using cache mounts returned by `+SET_CACHE_MOUNTS_ENV`.
 
 ### Usage
 
@@ -25,8 +26,9 @@ DO rust+INIT ...
 ```
 
 ### Arguments
-#### `cache_id`
-Overrides default ID of the global `$CARGO_HOME` cache. Its value is exported to the build environment under the entry: `$EARTHLY_CARGO_HOME_CACHE_ID`.
+#### `cache_prefix`
+Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: `$EARTHLY_CACHE_PREFIX`. 
+By default `${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache`
 
 #### `keep_fingerprints (false)`
 Instructs the following `+CARGO` calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with `--keep-ts `option.
@@ -64,28 +66,40 @@ For example `--output="release/[^\./]+"` would keep all the files in `/target/re
 ### Thread safety
 This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
 
-## +RUN_WITH_CACHE
+## +SET_CACHE_MOUNTS_ENV
 
-`+RUN_WITH_CACHE` runs the passed command with the CARGO caches mounted.
+Sets the following entries in the environment, to be used to mount the cargo caches.
+ - `EARTHLY_RUST_CARGO_HOME_CACHE`: Code of the mount cache for the cargo home.
+ - `EARTHLY_RUST_TARGET_CACHE`: Code of the mount cache for the target folder.
 
-Notice that in order to run this function, [+INIT](#init) must be called first. This function exports the target cache mount ID under the env entry: `$TARGET_CACHE_ID`.
-
-### Arguments
-#### `command (required)`
-Command to run, can be any expression.
-
-#### `cargo_home_cache_id`
-ID of the cargo home cache mount. By default: `$CARGO_HOME_CACHE_ID` as exported by `+INIT`
-
-#### `target_cache_id`
-ID of the target cache mount. By default: `${CARGO_HOME_CACHE_ID}#${EARTHLY_TARGET_NAME}`
+Notice that in order to run this function, [+INIT](#init) must be called first.
 
 ### Example
-Show `$CARGO_HOME` cached-entries size:
 
 ```earthfile
-DO rust-udc+RUN_WITH_CACHE --command "du \$CARGO_HOME"
+cross:
+  ...
+  DO rust+SET_CACHE_MOUNTS_ENV
+  WITH DOCKER
+    RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE  cross build --target $TARGET --release
+  END
 ```
+## COPY_OUTPUT
+This function copies files out of the target cache into the image layers.
+Use it function when you want to `SAVE ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
+
+Notice that in order to run this function, `+SET_CACHE_MOUNTS_ENV` or `+CARGO` must be called first.
+
+### Arguments
+#### `output` 
+Regex matching output artifacts files to be copied to `./target` folder in the caller filesystem (image layers).
+
+### Example
+```earthfile
+DO rust+SET_RUST_CACHE_MOUNTS
+RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
+DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
+``
 
 ## Complete example
 
