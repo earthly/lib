@@ -86,7 +86,7 @@ SET_CACHE_MOUNTS_ENV:
 # Arguments:
 #   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers).
 # Example:
-#   DO rust+RUST_GET_MOUNT_CACHE
+#   DO rust+SET_CACHE_MOUNTS_ENV
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 #   DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 COPY_OUTPUT:
