@@ -56,7 +56,7 @@ CARGO:
     IF [ "$EARTHLY_KEEP_FINGERPRINTS" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
-    DO +GET_RUST_CACHE_MOUNTS
+    DO +SET_CACHE_MOUNTS_ENV
     RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE \
       set -e; \
       cargo $args; \
@@ -66,14 +66,14 @@ CARGO:
       DO +COPY_OUTPUT --output=$output
     END
 
-# GET_RUST_CACHE_MOUNTS sets the following entries in the environment, to be used to mount the cargo caches.
+# SET_CACHE_MOUNTS_ENV sets the following entries in the environment, to be used to mount the cargo caches.
 #   - EARTHLY_RUST_CARGO_HOME_CACHE: Code of the mount cache for the cargo home.
 #   - EARTHLY_RUST_TARGET_CACHE: Code of the mount cache for the target folder.
 # Notice that in order to run this function, +INIT must be called first.
 # Example:
 #   DO rust+RUST_GET_MOUNT_CACHE
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
-GET_RUST_CACHE_MOUNTS:
+SET_CACHE_MOUNTS_ENV:
     COMMAND
     DO +CHECK_INITED
     ARG EARTHLY_TARGET_NAME #https://docs.earthly.dev/docs/earthfile/builtin-args
@@ -82,7 +82,7 @@ GET_RUST_CACHE_MOUNTS:
 
 # COPY_OUTPUT copies files out of the target cache into the image layers.
 # Use this function when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
-# Notice that in order to run this function, +GET_RUST_CACHE_MOUNTS or +CARGO must be called first.
+# Notice that in order to run this function, +SET_CACHE_MOUNTS_ENV or +CARGO must be called first.
 # Arguments:
 #   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers).
 # Example:
@@ -94,7 +94,7 @@ COPY_OUTPUT:
     ARG --required output
     ARG TMP_FOLDER="/tmp/earthly/lib/rust"
     RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
-      echo "+GET_RUST_CACHE_MOUNTS has not been called yet in this build environment" ; \
+      echo "+SET_CACHE_MOUNTS_ENV has not been called yet in this build environment" ; \
       exit 1; \
     fi;
     RUN --mount=$EARTHLY_RUST_TARGET_CACHE \

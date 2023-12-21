@@ -16,7 +16,7 @@ IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 This function sets some configuration in the environment (used by following functions), and installs required dependencies.
 It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.
 Note that this function changes `$CARGO_HOME` in the calling environment to point to a cache mount later on. 
-It is recommended then that all interaction with cargo is done throug the `+CARGO` function or using cache mounts returned by `+GET_RUST_CACHE_MOUNTS`.
+It is recommended then that all interaction with cargo is done throug the `+CARGO` function or using cache mounts returned by `+SET_CACHE_MOUNTS_ENV`.
 
 ### Usage
 
@@ -66,7 +66,7 @@ For example `--output="release/[^\./]+"` would keep all the files in `/target/re
 ### Thread safety
 This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
 
-## +GET_RUST_CACHE_MOUNTS
+## +SET_CACHE_MOUNTS_ENV
 
 Sets the following entries in the environment, to be used to mount the cargo caches.
  - `EARTHLY_RUST_CARGO_HOME_CACHE`: Code of the mount cache for the cargo home.
@@ -79,7 +79,7 @@ Notice that in order to run this function, [+INIT](#init) must be called first.
 ```earthfile
 cross:
   ...
-  DO rust+GET_RUST_CACHE_MOUNTS
+  DO rust+SET_CACHE_MOUNTS_ENV
   WITH DOCKER
     RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE  cross build --target $TARGET --release
   END
@@ -88,7 +88,7 @@ cross:
 This function copies files out of the target cache into the image layers.
 Use it function when you want to `SAVE ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 
-Notice that in order to run this function, `+GET_RUST_CACHE_MOUNTS` or `+CARGO` must be called first.
+Notice that in order to run this function, `+SET_CACHE_MOUNTS_ENV` or `+CARGO` must be called first.
 
 ### Arguments
 #### `output` 
