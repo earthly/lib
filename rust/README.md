@@ -99,7 +99,7 @@ Regex matching output artifacts files to be copied to `./target` folder in the c
 DO rust+SET_RUST_CACHE_MOUNTS
 RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
-``
+```
 
 ## Complete example
 
