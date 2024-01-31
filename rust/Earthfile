@@ -53,10 +53,10 @@ CARGO:
     DO +CHECK_INITED
     ARG --required args
     ARG output
+    DO +SET_CACHE_MOUNTS_ENV
     IF [ "$EARTHLY_KEEP_FINGERPRINTS" = "false" ]
        DO +REMOVE_SOURCE_FINGERPRINTS
     END
-    DO +SET_CACHE_MOUNTS_ENV
     RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE \
       set -e; \
       cargo $args; \
@@ -137,16 +137,20 @@ REMOVE_SOURCE_FINGERPRINTS:
     DO +CHECK_INITED
     COPY +get-tomljson/tomljson /tmp/tomljson
     COPY +get-jq/jq /tmp/jq
-    DO +RUN_WITH_CACHE --command="set -e;
-        source_libs=\$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf \"\\n\"' \\;) ;
-        fingerprint_folders=\$(find target -name .fingerprint) ;
-        echo \"deleting fingerprints:\";
-        for fingerprint_folder in \$fingerprint_folders; do
-          cd \$fingerprint_folder;
-          for source_lib in \$source_libs; do
-            find . -maxdepth 1 -regex \"\./\$source_lib-[^-]+\" -exec bash -c 'readlink -f {}; rm -rf {}' \; ;
-          done
-        done"
+    RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
+      echo "+SET_CACHE_MOUNTS_ENV has not been called yet in this build environment" ; \
+      exit 1; \
+    fi;
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE \
+        set -e;\
+        source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf "\n"' \;) ; \
+        fingerprint_folders=$(find target -name .fingerprint) ; \
+        for fingerprint_folder in $fingerprint_folders; do \
+           cd $fingerprint_folder; \
+           for source_lib in $source_libs; do \
+             find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec bash -c 'echo "deleting $(readlink -f {})"; rm -rf {}' \; ; \
+           done \
+         done;
 
 CHECK_INITED:
     COMMAND
