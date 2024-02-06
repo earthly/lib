@@ -1,47 +1,51 @@
-VERSION --global-cache 0.7
+VERSION --use-function-keyword --global-cache 0.7
 
-# INIT sets some configuration in the environment (used by following functions), and installs required dependencies.
-#   - cache_prefix: Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: $EARTHLY_CACHE_PREFIX. By default ${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache
-#   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
-#   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
+# INIT sets some configuration in the environment (to be used by rest of the functions later on).
+# Arguments:
+#   - cache_prefix: Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: $EARTHLY_CARGO_CACHE_PREFIX (see below)
+# This function sets the following entries in the calling environment:
+#   - CARGO_HOME: Changed to point to an internal location in the mount cache
+#   - PATH: Changed to include original $CARGO_HOME/bin
+#   - EARTHLY_CARGO_CACHE_PREFIX: Value of the cache_prefix, by default ${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache#${EARTHLY_GIT_BRANCH}
+#   - CARGO_INSTALL_ROOT: Changed to point to the original $CARGO_HOME
+#   - EARTHLY_RUST_CARGO_HOME_CACHE: Cache mount definition for the $CARGO_HOME
+#   - EARTHLY_RUST_TARGET_CACHE: Cache mount definition for ./target folder
+
 INIT:
-    COMMAND
-    RUN if [ -n "$EARTHLY_CACHE_PREFIX" ]; then \
+    FUNCTION
+    RUN if [ -n "$EARTHLY_CARGO_CACHE_PREFIX" ]; then \
       echo "+INIT has already been called in this build environment" ; \
       exit 1; \
     fi
     IF [ "$CARGO_HOME" = "" ]
         ENV CARGO_HOME="$HOME/.cargo"
     END
+
+    # Add current cargo home binaries folder to the path
     IF ! echo $PATH | grep -E -q "(^|:)$CARGO_HOME/bin($|:)"
         ENV PATH="$PATH:$CARGO_HOME/bin"
     END
-    DO +INSTALL_CARGO_SWEEP
-    RUN mkdir -p /tmp/earthly/cfg
+    #https://docs.earthly.dev/docs/earthfile/builtin-args
+    ARG EARTHLY_GIT_BRANCH
+    ARG EARTHLY_TARGET_PROJECT_NO_TAG
 
-    # $EARTHLY_CACHE_PREFIX
-    ARG EARTHLY_TARGET_PROJECT_NO_TAG #https://docs.earthly.dev/docs/earthfile/builtin-args
     ARG OS_RELEASE=$(md5sum /etc/os-release | cut -d ' ' -f 1)
-    ARG cache_prefix="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache"
-    ENV EARTHLY_CACHE_PREFIX=$cache_prefix
+    ARG cache_prefix="${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache#${EARTHLY_GIT_BRANCH}"
+    ENV EARTHLY_CARGO_CACHE_PREFIX=$cache_prefix
 
-    # $EARTHLY_KEEP_FINGERPRINTS
-    ARG keep_fingerprints=false
-    ENV EARTHLY_KEEP_FINGERPRINTS=$keep_fingerprints
-
-    # $EARTHLY_SWEEP_DAYS
-    ARG sweep_days=4
-    ENV EARTHLY_SWEEP_DAYS=$sweep_days
-
-    # Make sure that crates installed through this function are stored in the original cargo home, and not in the cargo home within the mount cache.
-    # This way, if BK garbage-collects them, the build is not broken.
+    # The following entry will make crates installed through this function reside in the original cargo home, and not in the cargo home within the mount cache.
+    # This way, if BK garbage-collects them, the build won't be broken.
     ENV CARGO_INSTALL_ROOT=$CARGO_HOME
-    # We change $CARGO_HOME while keeping $ORIGINAL_CARGO_HOME/bin directory in the path. This way, the Cargo binary is still accessible and the whole $CARGO_HOME is within the global cache
+
+    # We now change $CARGO_HOME while keeping the original $CARGO_HOME/bin directory in the path. This way, the cargo binaries are still accessible and the whole $CARGO_HOME is within the global cache
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
     ENV CARGO_HOME="/tmp/earthly/.cargo"
 
+    # Set Cargo caches
+    ENV EARTHLY_RUST_CARGO_HOME_CACHE="type=cache,mode=0777,id=$EARTHLY_CARGO_CACHE_PREFIX#cargo-home,sharing=shared,target=$CARGO_HOME"
+    ENV EARTHLY_RUST_TARGET_CACHE="type=cache,mode=0777,id=${EARTHLY_CARGO_CACHE_PREFIX}#target,sharing=shared,target=target"
+
 # CARGO runs the cargo command "cargo $args".
-# This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
 # Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - args: Cargo subcommand and its arguments. Required.
@@ -49,48 +53,29 @@ INIT:
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
-    COMMAND
+    FUNCTION
     DO +CHECK_INITED
     ARG --required args
     ARG output
-    DO +SET_CACHE_MOUNTS_ENV
-    IF [ "$EARTHLY_KEEP_FINGERPRINTS" = "false" ]
-       DO +REMOVE_SOURCE_FINGERPRINTS
-    END
     RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE \
       set -e; \
-      cargo $args; \
-      cargo sweep -r -t $EARTHLY_SWEEP_DAYS; \
-      cargo sweep -r -i;
+      cargo $args;
     IF [ "$output" != "" ]
       DO +COPY_OUTPUT --output=$output
     END
 
-# SET_CACHE_MOUNTS_ENV sets the following entries in the environment, to be used to mount the cargo caches.
-#   - EARTHLY_RUST_CARGO_HOME_CACHE: Code of the mount cache for the cargo home.
-#   - EARTHLY_RUST_TARGET_CACHE: Code of the mount cache for the target folder.
-# Notice that in order to run this function, +INIT must be called first.
-# Example:
-#   DO rust+SET_CACHE_MOUNTS_ENV
-#   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
-SET_CACHE_MOUNTS_ENV:
-    COMMAND
-    DO +CHECK_INITED
-    ARG EARTHLY_TARGET_NAME #https://docs.earthly.dev/docs/earthfile/builtin-args
-    ENV EARTHLY_RUST_CARGO_HOME_CACHE="type=cache,mode=0777,id=$EARTHLY_CACHE_PREFIX#cargo-home,sharing=shared,target=$CARGO_HOME"
-    ENV EARTHLY_RUST_TARGET_CACHE="type=cache,mode=0777,id=${EARTHLY_CACHE_PREFIX}#target#${EARTHLY_TARGET_NAME},sharing=locked,target=target"
-
 # COPY_OUTPUT copies files out of the target cache into the image layers.
 # Use this function when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
-# Notice that in order to run this function, +SET_CACHE_MOUNTS_ENV or +CARGO must be called first.
+# Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers).
 # Example:
-#   DO rust+SET_CACHE_MOUNTS_ENV
+#   DO rust+INIT
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 #   DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 COPY_OUTPUT:
-    COMMAND
+    FUNCTION
+    DO +CHECK_INITED
     ARG --required output
     ARG TMP_FOLDER="/tmp/earthly/lib/rust"
     RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
@@ -108,53 +93,27 @@ COPY_OUTPUT:
     RUN mkdir -p target; \
         mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
 
-get-tomljson:
-    FROM alpine:3.18.3
-    ARG USERARCH
-    ARG version=2.1.0
-    RUN wget -O tomljson.tar.xz https://github.com/pelletier/go-toml/releases/download/v${version}/tomljson_${version}_linux_${USERARCH}.tar.xz && \
-        tar -xf tomljson.tar.xz; \
-        chmod +x tomljson
-    SAVE ARTIFACT tomljson
-
-get-jq:
-    FROM alpine:3.18.3
-    ARG USERARCH
-    ARG version=1.7
-    RUN wget -O jq https://github.com/jqlang/jq/releases/download/jq-${version}/jq-linux-${USERARCH} && \
-        chmod +x jq
-    SAVE ARTIFACT jq
-
-INSTALL_CARGO_SWEEP:
-    COMMAND
-    RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
+# SWEEP runs cargo-sweep to clean build artifacts that haven't been accessed for a number of days.
+# Notice that in order to run this function, +INIT must be called first.
+# Arguments:
+#   - days: Number of days. Default value: 4
+SWEEP:
+    FUNCTION
+    DO +CHECK_INITED
+    ARG days=4
+    RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE \
+        set -e; \
+        if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
           echo "Installing cargo sweep" ; \
           cargo install cargo-sweep --root $CARGO_HOME; \
-        fi;
-
-REMOVE_SOURCE_FINGERPRINTS:
-    COMMAND
-    DO +CHECK_INITED
-    COPY +get-tomljson/tomljson /tmp/tomljson
-    COPY +get-jq/jq /tmp/jq
-    RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
-      echo "+SET_CACHE_MOUNTS_ENV has not been called yet in this build environment" ; \
-      exit 1; \
-    fi;
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE \
-        set -e;\
-        source_libs=$(find . -name Cargo.toml -exec bash -c '/tmp/tomljson {} | /tmp/jq -r .package.name; printf "\n"' \;) ; \
-        fingerprint_folders=$(find target -name .fingerprint) ; \
-        for fingerprint_folder in $fingerprint_folders; do \
-           cd $fingerprint_folder; \
-           for source_lib in $source_libs; do \
-             find . -maxdepth 1 -regex "\./$source_lib-[^-]+" -exec bash -c 'echo "deleting $(readlink -f {})"; rm -rf {}' \; ; \
-           done \
-         done;
+        fi; \
+        cargo sweep -r -t $days; \
+        cargo sweep -r -i;
 
 CHECK_INITED:
-    COMMAND
-    RUN  if [ ! -n "$EARTHLY_CACHE_PREFIX" ]; then \
+    FUNCTION
+    RUN  if [ ! -n "$EARTHLY_CARGO_CACHE_PREFIX" ]; then \
           echo "+INIT has not been called yet in this build environment" ; \
           exit 1; \
         fi;
+

@@ -6,37 +6,32 @@ Earthly's official collection of Rust [functions](https://docs.earthly.dev/docs/
 
 First, import the library up in your Earthfile:
 ```earthfile
-VERSION --global-cache 0.7
+VERSION 0.8
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
-> :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.
+> *Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.*
 
-## +INIT
+## +INIT 
 
-This function sets some configuration in the environment (used by following functions), and installs required dependencies.
-It must be called once per build environment, to avoid passing repetitive arguments to the functions called after it, and to install required dependencies before the source files are copied from the build context.
-Note that this function changes `$CARGO_HOME` in the calling environment to point to a cache mount later on. 
-It is recommended then that all interaction with cargo is done throug the `+CARGO` function or using cache mounts returned by `+SET_CACHE_MOUNTS_ENV`.
+INIT sets some entries in the calling environment (to be used by rest of the functions later on), in particular the ones related to mounting the cargo caches:
+- `EARTHLY_RUST_CARGO_HOME_CACHE`: Definition of the mount cache for the cargo home.
+- `EARTHLY_RUST_TARGET_CACHE`: Definition of the mount cache for the target folder.
+
+It must be called once per build environment.
+
+It is recommended that all interaction with Cargo is done with the previous caches mounted.
 
 ### Usage
 
 Call once per build environment:
 ```earthfile
-DO rust+INIT ...
+DO rust+INIT
 ```
 
 ### Arguments
 #### `cache_prefix`
-Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: `$EARTHLY_CACHE_PREFIX`. 
-By default `${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache`
-
-#### `keep_fingerprints (false)`
-Instructs the following `+CARGO` calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with `--keep-ts `option.
-Cargo caches compilations of packages in `target` folder based on their last modification timestamps.
-By default, this function removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
-
-#### `sweep_days (4)`
-`+CARGO` calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
+Sets the prefix to be used in the IDs of the two mount caches. By default: `${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache#${EARTHLY_GIT_BRANCH}`
+Its value is exported in the build environment as: `$EARTHLY_CARGO_CACHE_PREFIX`. 
 
 ## +CARGO
 
@@ -63,32 +58,17 @@ Use this argument when you want to `SAVE ARTIFACT` from the target folder (mount
 
 For example `--output="release/[^\./]+"` would keep all the files in `/target/release` that don't have any extension.
 
-### Thread safety
-This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
-
-## +SET_CACHE_MOUNTS_ENV
-
-Sets the following entries in the environment, to be used to mount the cargo caches.
- - `EARTHLY_RUST_CARGO_HOME_CACHE`: Code of the mount cache for the cargo home.
- - `EARTHLY_RUST_TARGET_CACHE`: Code of the mount cache for the target folder.
-
-Notice that in order to run this function, [+INIT](#init) must be called first.
-
 ### Example
-
 ```earthfile
-cross:
-  ...
-  DO rust+SET_CACHE_MOUNTS_ENV
-  WITH DOCKER
-    RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE  cross build --target $TARGET --release
-  END
+release:
+  FROM ...
+  DO rust+CARGO --args="build --release"  --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 ```
+
 ## COPY_OUTPUT
 This function copies files out of the target cache into the image layers.
-Use it function when you want to `SAVE ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
-
-Notice that in order to run this function, `+SET_CACHE_MOUNTS_ENV` or `+CARGO` must be called first.
+Use it when you want to perform `SAVE ARTIFACT` from the target folder (mounted cache), trying to minimize the total size of the copied fileset.
+Notice that in order to run this function, `+INIT` must be called first.
 
 ### Arguments
 #### `output` 
@@ -96,9 +76,25 @@ Regex matching output artifacts files to be copied to `./target` folder in the c
 
 ### Example
 ```earthfile
-DO rust+SET_RUST_CACHE_MOUNTS
-RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
-DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
+release:
+  DO rust+INIT
+  RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
+  DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
+```
+
+## SWEEP
+This function runs cargo-sweep to clean build artifacts that haven't been accessed for a number of days.
+Notice that in order to run this function, `+INIT` must be called first.
+
+### Arguments
+#### `days`
+Number of days. Default value: 4
+
+### Example
+```earthfile
+sweep:
+  DO rust+INIT
+  DO rust+SWEEP --days=10
 ```
 
 ## Complete example
@@ -123,7 +119,7 @@ Suppose the following project:
 The Earthfile would look like:
 
 ```earthfile
-VERSION --global-cache 0.7
+VERSION 0.8
 
 # Imports the library definition from default branch (in a real case, specify version or commit to guarantee immutability)
 IMPORT github.com/earthly/lib/rust AS rust
@@ -135,15 +131,17 @@ install:
   RUN cargo install --locked cargo-deny
   RUN rustup component add clippy
   RUN rustup component add rustfmt
-  # Call +INIT before copying the source file to avoid installing depencies every time source code changes. 
+  # Call +INIT before copying the source file to avoid installing dependencies every time source code changes. 
   # This parametrization will be used in future calls to functions of the library
-  DO rust+INIT --keep_fingerprints=true
+  DO rust+INIT
 
 source:
   FROM +install
+  # Always copy with --keep-ts for Cargo to detect changes
   COPY --keep-ts Cargo.toml Cargo.lock ./
   COPY --keep-ts deny.toml ./
   COPY --keep-ts --dir package1 package2  ./
+  DO rust+CARGO --args="check"
 
 # build builds with the Cargo release profile
 build:
@@ -182,15 +180,32 @@ all:
 
 ## Mount caches and parallelization
 
-This library uses several mount caches per tuple of `{project, os_release}`:
-- One cache mount for `$CARGO_HOME`, shared across all target builds without any locking involved. 
-- A family of locked cache mounts for `$CARGO_TARGET_DIR`. One per target. 
+This library uses two mount caches per tuple of `{project, branch, os_release}`:
+- One cache mount for `$CARGO_HOME`, shared across all target builds without any locking involved.
+- One cache mount for `$CARGO_TARGET_DIR`, shared across all target builds without any locking involved.
 
 Notice that:
 - the previous targets builds might belong to one or multiple Earthly builds.
-- builds will only be blocked by concurrent ones of the same target
+- Earthly will perform no locking across the builds. Instead, Cargo locking will be in place, the same way as if those builds were concurrent Cargo processes in a local machine.
 
 For example, running `earthly +all` in the previous example will:
 - run all targets (`+lint,+build,+test,+fmt,+check-dependencies`) in parallel without any blocking involved
 - use a common cache mount for `$CARGO_HOME`
-- use one individual `$CARGO_TARGET_DIR` cache mount per target 
+- use a common cache mount for  `$CARGO_TARGET_DIR`
+
+## Explicitly mounting the caches
+
+In that scenarios where running via `DO rust+CARGO` is not feasible, you can alternative mount the caches as follows:
+```earthfile
+RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE ...
+``` 
+
+### Example
+
+```earthfile
+cross:
+  ...
+  WITH DOCKER
+    RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cross build --target $TARGET --release
+  END
+```
