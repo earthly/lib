@@ -198,4 +198,4 @@ Notice that:
 For example, running `earthly +all` in the previous example will:
 - run all targets (`+lint,+build,+test,+fmt,+check-dependencies`) in parallel without any blocking involved.
 - use a common cache mount for `$CARGO_HOME`.
-- use one individual `$CARGO_TARGET_DIR` cache mount per each target.
+- use one individual `$CARGO_TARGET_DIR` cache mount per Earthly target.
