@@ -1,6 +1,6 @@
 VERSION --global-cache 0.7
-
 # INIT sets some configuration in the environment (used by following functions), and installs required dependencies.
+# Arguments:
 #   - cache_prefix: Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: $EARTHLY_CACHE_PREFIX. By default ${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache
 #   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
 #   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
@@ -17,7 +17,6 @@ INIT:
         ENV PATH="$PATH:$CARGO_HOME/bin"
     END
     DO +INSTALL_CARGO_SWEEP
-    RUN mkdir -p /tmp/earthly/cfg
 
     # $EARTHLY_CACHE_PREFIX
     ARG EARTHLY_TARGET_PROJECT_NO_TAG #https://docs.earthly.dev/docs/earthfile/builtin-args
@@ -70,15 +69,19 @@ CARGO:
 #   - EARTHLY_RUST_CARGO_HOME_CACHE: Code of the mount cache for the cargo home.
 #   - EARTHLY_RUST_TARGET_CACHE: Code of the mount cache for the target folder.
 # Notice that in order to run this function, +INIT must be called first.
+# Arguments:
+#   - target_cache_suffix: Optional cache suffix for the target folder cache ID.
 # Example:
 #   DO rust+SET_CACHE_MOUNTS_ENV
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 SET_CACHE_MOUNTS_ENV:
     COMMAND
     DO +CHECK_INITED
+    ARG target_cache_suffix
+    ARG TARGETPLATFORM
     ARG EARTHLY_TARGET_NAME #https://docs.earthly.dev/docs/earthfile/builtin-args
     ENV EARTHLY_RUST_CARGO_HOME_CACHE="type=cache,mode=0777,id=$EARTHLY_CACHE_PREFIX#cargo-home,sharing=shared,target=$CARGO_HOME"
-    ENV EARTHLY_RUST_TARGET_CACHE="type=cache,mode=0777,id=${EARTHLY_CACHE_PREFIX}#target#${EARTHLY_TARGET_NAME},sharing=locked,target=target"
+    ENV EARTHLY_RUST_TARGET_CACHE="type=cache,mode=0777,id=$EARTHLY_CACHE_PREFIX#target#$EARTHLY_TARGET_NAME#$TARGETPLATFORM#$target_cache_suffix,sharing=locked,target=target"
 
 # COPY_OUTPUT copies files out of the target cache into the image layers.
 # Use this function when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
