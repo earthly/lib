@@ -74,6 +74,11 @@ Sets the following entries in the environment, to be used to mount the cargo cac
 
 Notice that in order to run this function, [+INIT](#init) must be called first.
 
+### Arguments
+
+#### `target_cache_suffix` 
+Optional cache suffix for the target folder cache ID.
+
 ### Example
 
 ```earthfile
