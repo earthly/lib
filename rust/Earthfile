@@ -112,7 +112,7 @@ COPY_OUTPUT:
         mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp";
 
 # CROSS runs the [cross](https://github.com/cross-rs/cross) command "cross $args --target $target".
-# Notice that in order to run this function, +SET_CACHE_MOUNTS_ENV or +CARGO must be called first.
+# Notice that in order to run this function, +INIT must be called first.
 # Arguments:
 #   - target: Cross [target](https://github.com/cross-rs/cross?tab=readme-ov-file#supported-targets). Required.
 #   - args: Cross subcommand and its arguments. By default: "build --release"
