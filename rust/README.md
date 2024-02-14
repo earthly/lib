@@ -6,10 +6,9 @@ Earthly's official collection of Rust [functions](https://docs.earthly.dev/docs/
 
 First, import the library up in your Earthfile:
 ```earthfile
-VERSION --global-cache 0.7
+VERSION 0.8
 IMPORT github.com/earthly/lib/rust:<version/commit> AS rust
 ```
-> :warning: Due to [this issue](https://github.com/earthly/earthly/issues/3490), make sure to enable `--global-cache` in the calling Earthfile, as shown above.
 
 ## +INIT
 
@@ -82,13 +81,12 @@ Optional cache suffix for the target folder cache ID.
 ### Example
 
 ```earthfile
-cross:
+clean-target:
   ...
   DO rust+SET_CACHE_MOUNTS_ENV
-  WITH DOCKER
-    RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE  cross build --target $TARGET --release
-  END
+  RUN --mount=$EARTHLY_RUST_TARGET_CACHE rm -rf target
 ```
+
 ## +COPY_OUTPUT
 This function copies files out of the target cache into the image layers.
 Use it function when you want to `SAVE ARTIFACT` from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
@@ -104,6 +102,34 @@ Regex matching output artifacts files to be copied to `./target` folder in the c
 DO rust+SET_RUST_CACHE_MOUNTS
 RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
+```
+## +CROSS 
+
+Runs the [cross](https://github.com/cross-rs/cross) command: `cross $args --target $target` .
+
+Notice that:
+- This function makes use of `WITH DOCKER`, and hence parallelization might be tricky to achieve ([earthly#3808](https://github.com/earthly/earthly/issues/3808)). 
+- In order to run this function, [+INIT](#init) must be called first.
+
+### Arguments
+
+#### `target`
+Cross [target](https://github.com/cross-rs/cross?tab=readme-ov-file#supported-targets). Required.
+
+#### `args`
+Cross subcommand and its arguments. By default: `build --release`
+
+#### `output`
+Regex matching output artifacts files to be copied to `./target` folder in the caller filesystem (image layers). By default: `$target/release/[^\./]+`
+
+### Example
+
+```earthfile
+cross:
+  ...
+  DO rust+SET_CACHE_MOUNTS_ENV
+  DO rust+CROSS --target aarch64-unknown-linux-gnu
+  DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 ```
 
 ## Complete example
@@ -128,7 +154,7 @@ Suppose the following project:
 The Earthfile would look like:
 
 ```earthfile
-VERSION --global-cache 0.7
+VERSION 0.8
 
 # Imports the library definition from default branch (in a real case, specify version or commit to guarantee immutability)
 IMPORT github.com/earthly/lib/rust AS rust
@@ -175,7 +201,14 @@ lint:
 check-dependencies:
   FROM +source
   DO rust+CARGO --args="deny --all-features check --deny warnings bans license sources"
-  
+
+# cross performs cross compilation
+cross:
+  FROM +source
+  ARG --required target
+  DO rust+CROSS --target=$target
+  SAVE ARTIFACT target/$target AS LOCAL dist/$target
+    
 # all runs all other targets in parallel
 all:
   BUILD +lint
