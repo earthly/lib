@@ -127,7 +127,6 @@ CROSS:
     ARG output="$target/release/[^\./]+"
     ARG version=0.2.5
     DO +SET_CACHE_MOUNTS_ENV --target_cache_suffix="$target"
-    RUN echo "$EARTHLY_RUST_TARGET_CACHE"
     COPY (+get-cross/cross --version=$version) /tmp/earthly/cross
     WITH DOCKER  --pull ghcr.io/cross-rs/$target:$version
         RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE \
