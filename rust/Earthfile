@@ -136,6 +136,7 @@ CROSS:
            /tmp/earthly/cross $args --target=$target;
     END
     DO +COPY_OUTPUT --output="$output"
+
 get-cross:
     FROM alpine:3.18.3
     ARG --required version
