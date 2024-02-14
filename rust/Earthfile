@@ -120,7 +120,6 @@ COPY_OUTPUT:
 # Example:
 #   DO rust+SET_CACHE_MOUNTS_ENV
 #   DO rust+CROSS --target aarch64-unknown-linux-gnu
-
 CROSS:
     FUNCTION
     ARG --required target
