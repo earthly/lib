@@ -1,11 +1,11 @@
-VERSION --global-cache 0.7
+VERSION 0.8
 # INIT sets some configuration in the environment (used by following functions), and installs required dependencies.
 # Arguments:
 #   - cache_prefix: Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: $EARTHLY_CACHE_PREFIX. By default ${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache
 #   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
 #   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
-    COMMAND
+    FUNCTION
     RUN if [ -n "$EARTHLY_CACHE_PREFIX" ]; then \
       echo "+INIT has already been called in this build environment" ; \
       exit 1; \
@@ -48,7 +48,7 @@ INIT:
 #     Use this argument when you want to SAVE an ARTIFACT from the target folder (mounted cache), always trying to minimize the total size of the copied fileset.
 #     For example --output="release/[^\./]+" would keep all the files in /target/release that don't have any extension.
 CARGO:
-    COMMAND
+    FUNCTION
     DO +CHECK_INITED
     ARG --required args
     ARG output
@@ -75,7 +75,7 @@ CARGO:
 #   DO rust+SET_CACHE_MOUNTS_ENV
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 SET_CACHE_MOUNTS_ENV:
-    COMMAND
+    FUNCTION
     DO +CHECK_INITED
     ARG target_cache_suffix
     ARG TARGETPLATFORM
@@ -93,7 +93,7 @@ SET_CACHE_MOUNTS_ENV:
 #   RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE --mount=$EARTHLY_RUST_TARGET_CACHE cargo build --release
 #   DO rust+COPY_OUTPUT --output="release/[^\./]+" # Keep all the files in /target/release that don't have any extension.
 COPY_OUTPUT:
-    COMMAND
+    FUNCTION
     ARG --required output
     ARG TMP_FOLDER="/tmp/earthly/lib/rust"
     RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
@@ -109,7 +109,38 @@ COPY_OUTPUT:
             cd ..;  \
         fi;
     RUN mkdir -p target; \
-        mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp" ;
+        mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp";
+
+# CROSS runs the [cross](https://github.com/cross-rs/cross) command "cross $args --target $target".
+# Notice that in order to run this function, +INIT must be called first.
+# Arguments:
+#   - target: Cross [target](https://github.com/cross-rs/cross?tab=readme-ov-file#supported-targets). Required.
+#   - args: Cross subcommand and its arguments. By default: "build --release"
+#   - output: Regex matching output artifacts files to be copied to ./target folder in the caller filesystem (image layers). By default: "$target/release/[^\./]+"
+# Example:
+#   DO rust+SET_CACHE_MOUNTS_ENV
+#   DO rust+CROSS --target aarch64-unknown-linux-gnu
+CROSS:
+    FUNCTION
+    ARG --required target
+    ARG args="build --release"
+    ARG output="$target/release/[^\./]+"
+    ARG version=0.2.5
+    DO +SET_CACHE_MOUNTS_ENV --target_cache_suffix="$target"
+    RUN echo "$EARTHLY_RUST_TARGET_CACHE"
+    COPY (+get-cross/cross --version=$version) /tmp/earthly/cross
+    WITH DOCKER  --pull ghcr.io/cross-rs/$target:$version
+        RUN --mount=$EARTHLY_RUST_CARGO_HOME_CACHE \
+            --mount=$EARTHLY_RUST_TARGET_CACHE \
+           /tmp/earthly/cross $args --target=$target;
+    END
+    DO +COPY_OUTPUT --output="$output"
+
+get-cross:
+    FROM alpine:3.18.3
+    ARG --required version
+    RUN wget -nv -O- "https://github.com/cross-rs/cross/releases/download/v${version}/cross-x86_64-unknown-linux-musl.tar.gz" | tar -xzf - -C .
+    SAVE ARTIFACT cross
 
 get-tomljson:
     FROM alpine:3.18.3
@@ -129,14 +160,14 @@ get-jq:
     SAVE ARTIFACT jq
 
 INSTALL_CARGO_SWEEP:
-    COMMAND
+    FUNCTION
     RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
           echo "Installing cargo sweep" ; \
           cargo install cargo-sweep --root $CARGO_HOME; \
         fi;
 
 REMOVE_SOURCE_FINGERPRINTS:
-    COMMAND
+    FUNCTION
     DO +CHECK_INITED
     COPY +get-tomljson/tomljson /tmp/tomljson
     COPY +get-jq/jq /tmp/jq
@@ -156,7 +187,7 @@ REMOVE_SOURCE_FINGERPRINTS:
          done;
 
 CHECK_INITED:
-    COMMAND
+    FUNCTION
     RUN  if [ ! -n "$EARTHLY_CACHE_PREFIX" ]; then \
           echo "+INIT has not been called yet in this build environment" ; \
           exit 1; \
