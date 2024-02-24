@@ -4,11 +4,23 @@ FROM alpine/git:2.36.3
 
 # Estimates monthly active users of a GIT remote repo, based on past commits
 active-users:
-
-  RUN mkdir ~/.ssh; \
-      ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts; \
-      ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
-  RUN --no-cache --ssh --secret repoUrl git clone --bare --filter=blob:none $repoUrl repo;
+  RUN apk add --no-cache python3
+  RUN echo "
+from urllib.parse import urlsplit
+import sys
+p = urlsplit(sys.argv[1])
+if p.scheme == 'ssh':
+  with open('/tmp/.host', 'w') as f:
+    f.write(p.hostname)
+  with open('/tmp/.port', 'w') as f:
+    f.write(str(p.port or 22))
+" > parse.py
+  RUN --no-cache --ssh --secret repoUrl python3 parse.py "$repoUrl" && \
+      # don't scan if SSH isn't actually used; some environments may actively block it
+      if [ -f /tmp/.host ]; then \
+        ssh-keyscan -t rsa -p "$(cat /tmp/.port)" "$(cat /tmp/.host)" > /etc/ssh/ssh_known_hosts; \
+      fi && \
+      git clone --bare --filter=blob:none $repoUrl repo;
   RUN --no-cache cd repo; \
       activeUsers=$(git --no-pager log -s --format="%ae" --since=30.days | grep -v @users.noreply.github.com | sort | uniq -c | awk '$1 >= 3 {print $0}' | wc -l); \
       echo ""; \
