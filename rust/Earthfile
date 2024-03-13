@@ -109,7 +109,12 @@ COPY_OUTPUT:
             cd ..;  \
         fi;
     RUN mkdir -p target; \
-        mv $TMP_FOLDER/* target 2>/dev/null || echo "no files found within ./target matching the provided output regexp";
+        if [ "$(find "$TMP_FOLDER" -type f -printf . | wc -c)" -eq 0 ]; then  \
+            echo "no files found within ./target matching the provided output regexp"; \
+        else \
+            cp -ruT "$TMP_FOLDER" target;  \
+            rm -rf "$TMP_FOLDER";  \
+        fi;
 
 # CROSS runs the [cross](https://github.com/cross-rs/cross) command "cross $args --target $target".
 # Notice that in order to run this function, +INIT must be called first.
