@@ -2,7 +2,7 @@ VERSION 0.8
 # INIT sets some configuration in the environment (used by following functions), and installs required dependencies.
 # Arguments:
 #   - cache_prefix: Overrides cache prefix for cache IDS. Its value is exported to the build environment under the entry: $EARTHLY_CACHE_PREFIX. By default ${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache
-#   - keep_fingerprints (false): Instructs the following +CARGO calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
+#   - keep_fingerprints (false): Instructs the following +CARGO calls to not remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with --keep-ts option.
 #   - sweep_days (4): +CARGO uses cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
 INIT:
     FUNCTION
@@ -167,7 +167,7 @@ INSTALL_CARGO_SWEEP:
     FUNCTION
     RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
           echo "Installing cargo sweep" ; \
-          cargo install cargo-sweep --root $CARGO_HOME; \
+          cargo install cargo-sweep@0.7.0 --locked --root $CARGO_HOME; \
         fi;
 
 REMOVE_SOURCE_FINGERPRINTS:
