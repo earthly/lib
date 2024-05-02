@@ -4,6 +4,7 @@ INSTALL:
     COMMAND
     COPY +install-dind-script/install-dind.sh /tmp/install-dind.sh
     RUN /tmp/install-dind.sh
+    ENV OTEL_TRACES_EXPORTER=none # disabled for speed improvement; see https://github.com/earthly/earthly/issues/4066
 
 install-dind-script:
     FROM alpine:3.18.4
