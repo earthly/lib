@@ -38,19 +38,22 @@ jobs:
           eval $(ssh-agent) && \
           earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
           earthly --ci -P --org earthly-technologies +test
+
   test-native-arm:
     name: +test-native-arm
-    runs-on: ubuntu-latest
+    runs-on: [earthly-satellite#gha-arm-lib]
     env:
       FORCE_COLOR: 1
       EARTHLY_CONVERSION_PARALLELISM: "5"
       EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
       EARTHLY_INSTALL_ID: "earthly-lib-githubactions"
     steps:
-      - uses: earthly/actions/setup-earthly@v1
       - uses: actions/checkout@v2
       - name: Docker mirror login (non fork only)
-        run: docker login registry-1.docker.io.mirror.corp.earthly.dev --username "${{ secrets.DOCKERHUB_MIRROR_USERNAME }}" --password "${{ secrets.DOCKERHUB_MIRROR_PASSWORD }}"
+        run: |-
+          dockerd&
+          sleep 30
+          docker login registry-1.docker.io.mirror.corp.earthly.dev --username "${{ secrets.DOCKERHUB_MIRROR_USERNAME }}" --password "${{ secrets.DOCKERHUB_MIRROR_PASSWORD }}"
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Configure Earthly to use mirror (non fork only)
         run: |-
