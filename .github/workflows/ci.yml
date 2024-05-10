@@ -37,7 +37,7 @@ jobs:
           earthly config git "{github.com: {auth: ssh, user: git}}" && \
           eval $(ssh-agent) && \
           earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
-          earthly --ci -P --org earthly-technologies +test
+          earthly --ci -P +test
 
   test-native-arm:
     name: +test-native-arm
@@ -66,4 +66,4 @@ jobs:
           earthly config git "{github.com: {auth: ssh, user: git}}" && \
           eval $(ssh-agent) && \
           earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
-          earthly --ci -P --org earthly-technologies --satellite lib-arm ./utils/dind+test
+          earthly --ci -P ./utils/dind+test
