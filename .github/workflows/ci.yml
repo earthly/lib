@@ -13,53 +13,12 @@ concurrency:
 jobs:
   test:
     name: +test
-    runs-on: ubuntu-latest
+    runs-on: [earthly-satellite#gha-lib]
     env:
       FORCE_COLOR: 1
       EARTHLY_CONVERSION_PARALLELISM: "5"
       EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
-      EARTHLY_INSTALL_ID: "earthly-lib-githubactions"
     steps:
-      - uses: earthly/actions/setup-earthly@v1
-      - uses: actions/checkout@v2
-      - name: Docker mirror login (non fork only)
-        run: docker login registry-1.docker.io.mirror.corp.earthly.dev --username "${{ secrets.DOCKERHUB_MIRROR_USERNAME }}" --password "${{ secrets.DOCKERHUB_MIRROR_PASSWORD }}"
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-      - name: Configure Earthly to use mirror (non fork only)
-        run: |-
-          earthly config global.buildkit_additional_config "'[registry.\"docker.io\"]
-
-          mirrors = [\"registry-1.docker.io.mirror.corp.earthly.dev\"]'"
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
       - name: Run tests
         run: |-
-          earthly config git "{github.com: {auth: ssh, user: git}}" && \
-          eval $(ssh-agent) && \
-          earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
-          earthly --ci -P --org earthly-technologies --satellite lib +test
-  test-native-arm:
-    name: +test-native-arm
-    runs-on: ubuntu-latest
-    env:
-      FORCE_COLOR: 1
-      EARTHLY_CONVERSION_PARALLELISM: "5"
-      EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
-      EARTHLY_INSTALL_ID: "earthly-lib-githubactions"
-    steps:
-      - uses: earthly/actions/setup-earthly@v1
-      - uses: actions/checkout@v2
-      - name: Docker mirror login (non fork only)
-        run: docker login registry-1.docker.io.mirror.corp.earthly.dev --username "${{ secrets.DOCKERHUB_MIRROR_USERNAME }}" --password "${{ secrets.DOCKERHUB_MIRROR_PASSWORD }}"
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-      - name: Configure Earthly to use mirror (non fork only)
-        run: |-
-          earthly config global.buildkit_additional_config "'[registry.\"docker.io\"]
-
-          mirrors = [\"registry-1.docker.io.mirror.corp.earthly.dev\"]'"
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-      - name: Run tests
-        run: |-
-          earthly config git "{github.com: {auth: ssh, user: git}}" && \
-          eval $(ssh-agent) && \
-          earthly secrets --org earthly-technologies --project core get littleredcorvette-id_rsa | ssh-add - && \
-          earthly --ci -P --org earthly-technologies --satellite lib-arm ./utils/dind+test
+          earthly -P github.com/earthly/earthly/tests/+allow-privileged-test
