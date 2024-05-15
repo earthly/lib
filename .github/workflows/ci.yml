@@ -19,6 +19,7 @@ jobs:
       EARTHLY_CONVERSION_PARALLELISM: "5"
       EARTHLY_TOKEN: "${{ secrets.EARTHLY_TOKEN }}"
     steps:
+
       - name: Run tests
         run: |-
           earthly -P github.com/earthly/earthly/tests/+allow-privileged-test
