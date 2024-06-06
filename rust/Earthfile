@@ -39,6 +39,9 @@ INIT:
     # ($CARGO_HOME/.package-cache has to be in the cache so Cargo can properly synchronize parallel access to $CARGO_HOME resources).
     ENV CARGO_HOME="/tmp/earthly/.cargo"
 
+    DO +INSTALL_EARTHLY_FUNCTIONS
+
+
 # CARGO runs the cargo command "cargo $args".
 # This function is thread safe. Parallel builds of targets calling this function should be free of race conditions.
 # Notice that in order to run this function, +INIT must be called first.
@@ -60,10 +63,9 @@ CARGO:
       set -e; \
       cargo $args; \
       cargo sweep -r -t $EARTHLY_SWEEP_DAYS; \
-      cargo sweep -r -i;
-    IF [ "$output" != "" ]
-      DO +COPY_OUTPUT --output=$output
-    END
+      cargo sweep -r -i; \
+      $EARTHLY_FUNCTIONS_HOME/copy-output.sh "$output";
+    RUN $EARTHLY_FUNCTIONS_HOME/rename-output.sh
 
 # SET_CACHE_MOUNTS_ENV sets the following entries in the environment, to be used to mount the cargo caches.
 #   - EARTHLY_RUST_CARGO_HOME_CACHE: Code of the mount cache for the cargo home.
@@ -95,26 +97,13 @@ SET_CACHE_MOUNTS_ENV:
 COPY_OUTPUT:
     FUNCTION
     ARG --required output
-    ARG TMP_FOLDER="/tmp/earthly/lib/rust"
+    DO +CHECK_INITED
     RUN  if [ ! -n "$EARTHLY_RUST_TARGET_CACHE" ]; then \
       echo "+SET_CACHE_MOUNTS_ENV has not been called yet in this build environment" ; \
       exit 1; \
     fi;
-    RUN --mount=$EARTHLY_RUST_TARGET_CACHE \
-        if [ -n "$output" ]; then  \
-            echo "Copying output files" ;  \
-            mkdir -p $TMP_FOLDER;  \
-            cd target;  \
-            find . -type f -regextype posix-egrep -regex "./$output" -exec cp --parents {} $TMP_FOLDER \; ;  \
-            cd ..;  \
-        fi;
-    RUN mkdir -p target; \
-        if [ "$(find "$TMP_FOLDER" -type f -printf . | wc -c)" -eq 0 ]; then  \
-            echo "no files found within ./target matching the provided output regexp"; \
-        else \
-            cp -ruT "$TMP_FOLDER" target;  \
-            rm -rf "$TMP_FOLDER";  \
-        fi;
+    RUN --mount=$EARTHLY_RUST_TARGET_CACHE $EARTHLY_FUNCTIONS_HOME/copy-output.sh "$output"
+    RUN $EARTHLY_FUNCTIONS_HOME/rename-output.sh
 
 # CROSS runs the [cross](https://github.com/cross-rs/cross) command "cross $args --target $target".
 # Notice that in order to run this function, +INIT must be called first.
@@ -168,6 +157,34 @@ INSTALL_CARGO_SWEEP:
     RUN if [ ! -f $CARGO_HOME/bin/cargo-sweep ]; then \
           echo "Installing cargo sweep" ; \
           cargo install cargo-sweep@0.7.0 --locked --root $CARGO_HOME; \
+        fi;
+
+INSTALL_EARTHLY_FUNCTIONS:
+    FUNCTION
+    ENV EARTHLY_FUNCTIONS_HOME="/tmp/earthly/functions"
+    RUN mkdir -p $EARTHLY_FUNCTIONS_HOME
+    RUN if [ ! -f $EARTHLY_FUNCTIONS_HOME/copy-output.sh ]; then \
+          OUTPUT_TMP_FOLDER="/tmp/earthly/lib/rust"; \
+    # copy-output.sh copies matching files from ./target to $OUTPUT_TMP_FOLDER
+    # this function is expected to be called from a build context with ./target belonging to a shared cache
+          echo "if [ -n \"\$1\" ]; then
+                    echo \"Copying output files\" ;
+                    mkdir -p $OUTPUT_TMP_FOLDER;
+                    cd target;
+                    find . -type f -regextype posix-egrep -regex \"./\$1\" -exec cp --parents {} $OUTPUT_TMP_FOLDER \; ;
+                    cd ..;
+                fi;" > $EARTHLY_FUNCTIONS_HOME/copy-output.sh; \
+          chmod +x $EARTHLY_FUNCTIONS_HOME/copy-output.sh; \
+    # rename-output.sh moves files back from $OUTPUT_TMP_FOLDER to ./target
+    # this function is expected to be called from a build context with ./target not belonging to a shared cache
+          echo "mkdir -p target;
+                if [ \"\$(find \"$OUTPUT_TMP_FOLDER\" -type f -printf . | wc -c)\" -eq 0 ]; then
+                    echo \"no files found within ./target matching the provided output regexp\";
+                else
+                    cp -ruT \"$OUTPUT_TMP_FOLDER\" target;
+                    rm -rf \"$OUTPUT_TMP_FOLDER\";
+                fi;" > $EARTHLY_FUNCTIONS_HOME/rename-output.sh; \
+          chmod +x $EARTHLY_FUNCTIONS_HOME/rename-output.sh; \
         fi;
 
 REMOVE_SOURCE_FINGERPRINTS:
