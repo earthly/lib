@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: +test
-    runs-on: [earthly-satellite#gha-lib]
+    runs-on: [earthly-satellite#gha-lib] # https://docs.earthly.dev/earthly-cloud/satellites/gha-runners
     env:
       FORCE_COLOR: 1
       EARTHLY_CONVERSION_PARALLELISM: "5"
@@ -38,7 +38,7 @@ jobs:
 
   test-native-arm:
     name: +test-native-arm
-    runs-on: [earthly-satellite#gha-arm-lib]
+    runs-on: [earthly-satellite#gha-arm-lib] # https://docs.earthly.dev/earthly-cloud/satellites/gha-runners
     env:
       FORCE_COLOR: 1
       EARTHLY_CONVERSION_PARALLELISM: "5"
