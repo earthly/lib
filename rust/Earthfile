@@ -165,6 +165,8 @@ INSTALL_EARTHLY_FUNCTIONS:
     RUN mkdir -p $EARTHLY_FUNCTIONS_HOME
     RUN if [ ! -f $EARTHLY_FUNCTIONS_HOME/copy-output.sh ]; then \
           OUTPUT_TMP_FOLDER="/tmp/earthly/lib/rust"; \
+    # copy-output.sh copies matching files from ./target to $OUTPUT_TMP_FOLDER
+    # this function is expected to be called from a build context with ./target belonging to a shared cache
           echo "if [ -n \"\$1\" ]; then
                     echo \"Copying output files\" ;
                     mkdir -p $OUTPUT_TMP_FOLDER;
@@ -173,6 +175,8 @@ INSTALL_EARTHLY_FUNCTIONS:
                     cd ..;
                 fi;" > $EARTHLY_FUNCTIONS_HOME/copy-output.sh; \
           chmod +x $EARTHLY_FUNCTIONS_HOME/copy-output.sh; \
+    # rename-output.sh moves files back from $OUTPUT_TMP_FOLDER to ./target
+    # this function is expected to be called from a build context with ./target not belonging to a shared cache
           echo "mkdir -p target;
                 if [ \"\$(find \"$OUTPUT_TMP_FOLDER\" -type f -printf . | wc -c)\" -eq 0 ]; then
                     echo \"no files found within ./target matching the provided output regexp\";
