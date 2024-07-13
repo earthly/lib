@@ -30,9 +30,10 @@ Overrides cache prefix for cache IDS. Its value is exported to the build environ
 By default `${EARTHLY_TARGET_PROJECT_NO_TAG}#${OS_RELEASE}#earthly-cargo-cache`
 
 #### `keep_fingerprints (false)`
-Instructs the following `+CARGO` calls to don't remove the Cargo fingerprints of the source packages. Use only when source packages have been COPYed with `--keep-ts `option.
-Cargo caches compilations of packages in `target` folder based on their last modification timestamps.
-By default, this function removes the fingerprints of the packages found in the source code, to force their recompilation and work even when the Earthly `COPY` commands used overwrote the timestamps.
+
+By default `+CARGO` removes the [compiler fingerprints](https://doc.rust-lang.org/nightly/nightly-rustc/cargo/core/compiler/fingerprint/struct.Fingerprint.html) of those packages found in your source code (not their dependencies), to force their recompilation and work even when the Earthly `COPY` commands overwrote file mtimes (by default).
+
+Set `keep_fingerprints=true` to keep the source packages fingerprints and avoid their recompilation, when source packages have been copied with `--keep-ts `option.
 
 #### `sweep_days (4)`
 `+CARGO` calls use cargo-sweep to clean build artifacts that haven't been accessed for this number of days.
